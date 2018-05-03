@@ -35,11 +35,11 @@ static const int DEFAULT_INSTANTSEND_DEPTH          = 5;
 
 static const int MIN_INSTANTSEND_PROTO_VERSION      = 70208;
 
-// For how long we are going to accept votes/locks
-// after we saw the first one for a specific transaction
+/// For how long we are going to accept votes/locks
+/// after we saw the first one for a specific transaction
 static const int INSTANTSEND_LOCK_TIMEOUT_SECONDS   = 15;
-// For how long we are going to keep invalid votes and votes for failed lock attempts,
-// must be greater than INSTANTSEND_LOCK_TIMEOUT_SECONDS
+/// For how long we are going to keep invalid votes and votes for failed lock attempts,
+/// must be greater than INSTANTSEND_LOCK_TIMEOUT_SECONDS
 static const int INSTANTSEND_FAILED_TIMEOUT_SECONDS = 60;
 
 extern bool fEnableInstantSend;
@@ -53,24 +53,24 @@ private:
     int nCachedBlockHeight;
 
     // maps for AlreadyHave
-    std::map<uint256, CTxLockRequest> mapLockRequestAccepted; // tx hash - tx
-    std::map<uint256, CTxLockRequest> mapLockRequestRejected; // tx hash - tx
-    std::map<uint256, CTxLockVote> mapTxLockVotes; // vote hash - vote
-    std::map<uint256, CTxLockVote> mapTxLockVotesOrphan; // vote hash - vote
+    std::map<uint256, CTxLockRequest> mapLockRequestAccepted; ///< Tx hash - Tx
+    std::map<uint256, CTxLockRequest> mapLockRequestRejected; ///< Tx hash - Tx
+    std::map<uint256, CTxLockVote> mapTxLockVotes; ///< Vote hash - Vote
+    std::map<uint256, CTxLockVote> mapTxLockVotesOrphan; ///< Vote hash - Vote
 
-    std::map<uint256, CTxLockCandidate> mapTxLockCandidates; // tx hash - lock candidate
+    std::map<uint256, CTxLockCandidate> mapTxLockCandidates; ///< Tx hash - Lock candidate
 
-    std::map<COutPoint, std::set<uint256> > mapVotedOutpoints; // utxo - tx hash set
-    std::map<COutPoint, uint256> mapLockedOutpoints; // utxo - tx hash
+    std::map<COutPoint, std::set<uint256> > mapVotedOutpoints; ///< UTXO - Tx hash set
+    std::map<COutPoint, uint256> mapLockedOutpoints; ///< UTXO - Tx hash
 
-    // track masternodes who voted with no txlockrequest (for DOS protection)
-    std::map<COutPoint, int64_t> mapMasternodeOrphanVotes; // mn outpoint - time
+    /// Track masternodes who voted with no txlockrequest (for DOS protection)
+    std::map<COutPoint, int64_t> mapMasternodeOrphanVotes; ///< MN outpoint - Time
 
     bool CreateTxLockCandidate(const CTxLockRequest& txLockRequest);
     void CreateEmptyTxLockCandidate(const uint256& txHash);
     void Vote(CTxLockCandidate& txLockCandidate, CConnman& connman);
 
-    // process consensus vote message
+    /// Process consensus vote message
     bool ProcessNewTxLockVote(CNode* pfrom, const CTxLockVote& vote, CConnman& connman);
 
     void UpdateVotedOutpoints(const CTxLockVote& vote, CTxLockCandidate& txLockCandidate);
@@ -80,7 +80,7 @@ private:
 
     void TryToFinalizeLockCandidate(const CTxLockCandidate& txLockCandidate);
     void LockTransactionInputs(const CTxLockCandidate& txLockCandidate);
-    // update UI and notify external script if any
+    /// Update UI and notify external script if any
     void UpdateLockedTransaction(const CTxLockCandidate& txLockCandidate);
     bool ResolveConflicts(const CTxLockCandidate& txLockCandidate);
 
@@ -105,16 +105,16 @@ public:
 
     bool GetLockedOutPointTxHash(const COutPoint& outpoint, uint256& hashRet);
 
-    // verify if transaction is currently locked
+    /// Verify if transaction is currently locked
     bool IsLockedInstantSendTransaction(const uint256& txHash);
-    // get the actual number of accepted lock signatures
+    /// Get the actual number of accepted lock signatures
     int GetTransactionLockSignatures(const uint256& txHash);
-    // get instantsend confirmations (only)
+    /// Get instantsend confirmations (only)
     int GetConfirmations(const uint256 &nTXHash);
 
-    // remove expired entries from maps
+    /// Remove expired entries from maps
     void CheckAndRemove();
-    // verify if transaction lock timed out
+    /// Verify if transaction lock timed out
     bool IsTxLockCandidateTimedOut(const uint256& txHash);
 
     void Relay(const uint256& txHash, CConnman& connman);
@@ -131,8 +131,8 @@ private:
     static const CAmount MIN_FEE            = 0.0001 * COIN;
 
 public:
-    // Warn for a large number of inputs to an IS tx - fees could be substantial
-    // and the number txlvote responses requested large (10 * # of inputs)
+    /// Warn for a large number of inputs to an IS tx - fees could be substantial
+    /// and the number txlvote responses requested large (10 * # of inputs)
     static const int WARN_MANY_INPUTS       = 100;
 
     CTransactionRef tx;
@@ -183,7 +183,7 @@ private:
     COutPoint outpointMasternode;
     std::vector<unsigned char> vchMasternodeSignature;
     // local memory only
-    int nConfirmedHeight; // when corresponding tx is 0-confirmed or conflicted, nConfirmedHeight is -1
+    int nConfirmedHeight; ///< When corresponding tx is 0-confirmed or conflicted, nConfirmedHeight is -1
     int64_t nTimeCreated;
 
 public:
@@ -239,8 +239,8 @@ public:
 class COutPointLock
 {
 private:
-    COutPoint outpoint; // utxo
-    std::map<COutPoint, CTxLockVote> mapMasternodeVotes; // masternode outpoint - vote
+    COutPoint outpoint; ///< UTXO
+    std::map<COutPoint, CTxLockVote> mapMasternodeVotes; ///< Masternode outpoint - vote
     bool fAttacked = false;
 
 public:
@@ -267,7 +267,7 @@ public:
 class CTxLockCandidate
 {
 private:
-    int nConfirmedHeight; // when corresponding tx is 0-confirmed or conflicted, nConfirmedHeight is -1
+    int nConfirmedHeight; ///<When corresponding tx is 0-confirmed or conflicted, nConfirmedHeight is -1
     int64_t nTimeCreated;
 
 public:
