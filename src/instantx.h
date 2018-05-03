@@ -26,6 +26,9 @@ extern CInstantSend instantsend;
     (1000/2900.0)**5 = 0.004875397277841433
 */
 
+// The INSTANTSEND_DEPTH is the "pseudo block depth" level assigned to locked
+// txs to indicate the degree of confidence in their eventual confirmation and
+// inability to be double-spent (adjustable via command line argument)
 static const int MIN_INSTANTSEND_DEPTH              = 0;
 static const int MAX_INSTANTSEND_DEPTH              = 60;
 static const int DEFAULT_INSTANTSEND_DEPTH          = 5;
@@ -60,14 +63,14 @@ private:
     std::map<COutPoint, std::set<uint256> > mapVotedOutpoints; // utxo - tx hash set
     std::map<COutPoint, uint256> mapLockedOutpoints; // utxo - tx hash
 
-    //track masternodes who voted with no txreq (for DOS protection)
+    // track masternodes who voted with no txlockrequest (for DOS protection)
     std::map<COutPoint, int64_t> mapMasternodeOrphanVotes; // mn outpoint - time
 
     bool CreateTxLockCandidate(const CTxLockRequest& txLockRequest);
     void CreateEmptyTxLockCandidate(const uint256& txHash);
     void Vote(CTxLockCandidate& txLockCandidate, CConnman& connman);
 
-    //process consensus vote message
+    // process consensus vote message
     bool ProcessNewTxLockVote(CNode* pfrom, const CTxLockVote& vote, CConnman& connman);
 
     void UpdateVotedOutpoints(const CTxLockVote& vote, CTxLockCandidate& txLockCandidate);
@@ -77,7 +80,7 @@ private:
 
     void TryToFinalizeLockCandidate(const CTxLockCandidate& txLockCandidate);
     void LockTransactionInputs(const CTxLockCandidate& txLockCandidate);
-    //update UI and notify external script if any
+    // update UI and notify external script if any
     void UpdateLockedTransaction(const CTxLockCandidate& txLockCandidate);
     bool ResolveConflicts(const CTxLockCandidate& txLockCandidate);
 
@@ -128,6 +131,8 @@ private:
     static const CAmount MIN_FEE            = 0.0001 * COIN;
 
 public:
+    // Warn for a large number of inputs to an IS tx - fees could be substantial
+    // and the number txlvote responses requested large (10 * # of inputs)
     static const int WARN_MANY_INPUTS       = 100;
 
     CTransactionRef tx;
