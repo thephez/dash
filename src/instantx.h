@@ -31,6 +31,7 @@ extern CInstantSend instantsend;
 // inability to be double-spent (adjustable via command line argument)
 static const int MIN_INSTANTSEND_DEPTH              = 0;
 static const int MAX_INSTANTSEND_DEPTH              = 60;
+/// Default number of "pseudo-confirmations" for an InstantSend tx
 static const int DEFAULT_INSTANTSEND_DEPTH          = 5;
 
 static const int MIN_INSTANTSEND_PROTO_VERSION      = 70208;
@@ -46,6 +47,9 @@ extern bool fEnableInstantSend;
 extern int nInstantSendDepth;
 extern int nCompleteTXLocks;
 
+/**
+ * Manages InstantSend. Processes lock requests, candidates, and votes.
+ */
 class CInstantSend
 {
 private:
@@ -125,6 +129,9 @@ public:
     std::string ToString();
 };
 
+/**
+ * An InstantSend transaction lock request.
+ */
 class CTxLockRequest
 {
 private:
@@ -175,6 +182,13 @@ public:
     }
 };
 
+/**
+ * An InstantSend transaction lock vote. Sent by a masternode in response to a
+ * transaction lock request (ix message) to indicate the transaction input can
+ * be locked. Contains the proposed transaction's hash and the outpoint being
+ * locked along with the masternodes outpoint and signature.
+ * @see CTxLockRequest
+ */
 class CTxLockVote
 {
 private:
@@ -236,6 +250,9 @@ public:
     void Relay(CConnman& connman) const;
 };
 
+/**
+ * An InstantSend OutpointLock.
+ */
 class COutPointLock
 {
 private:
@@ -264,6 +281,9 @@ public:
     void Relay(CConnman& connman) const;
 };
 
+/**
+ * An InstantSend transaction lock candidate.
+ */
 class CTxLockCandidate
 {
 private:
