@@ -235,7 +235,7 @@ void protx_register_prepare_help()
             "key and then passed to \"protx register_submit\". The prepared transaction will also contain inputs\n"
             "and outputs to cover fees.\n"
             "\nArguments:\n"
-            "1., 2., 3., ...         See help text of \"protx register_fund\".\n"
+            "1., 2., 3., ...         See help text of \"protx register\".\n"
             "\nResult:\n"
             "{                         (json object)\n"
             "  \"tx\" :                  (string) The serialized ProTx in hex format.\n"
