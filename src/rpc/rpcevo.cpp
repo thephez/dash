@@ -255,7 +255,7 @@ void protx_register_submit_help()
             "\nSubmits the specified ProTx to the network. This command will also sign the inputs of the transaction\n"
             "which were previously added by \"protx register_prepare\" to cover transaction fees\n"
             "\nArguments:\n"
-            "1. \"tx\"                 (string, required) The serialized transaction previosly returned by \"protx register_prepare\"\n"
+            "1. \"tx\"                 (string, required) The serialized transaction previously returned by \"protx register_prepare\"\n"
             "2. \"sig\"                (string, required) The signature signed with the collateral key. Must be in base64 format.\n"
             "\nExamples:\n"
             + HelpExampleCli("protx", "register_submit \"tx\" \"sig\"")
