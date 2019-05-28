@@ -872,7 +872,7 @@ UniValue gobject_getcurrentvotes(const JSONRPCRequest& request)
 [[ noreturn ]] void gobject_help()
 {
     throw std::runtime_error(
-            "gobject \"command\"...\n"
+            "gobject \"command\" ...\n"
             "Set of commands to manage governance objects.\n"
             "\nAvailable commands:\n"
             "  check              - Validate governance object data (proposal only)\n"

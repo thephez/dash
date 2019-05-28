@@ -420,7 +420,7 @@ UniValue masternode_winners(const JSONRPCRequest& request)
 [[ noreturn ]] void masternode_help()
 {
     throw std::runtime_error(
-        "masternode \"command\"...\n"
+        "masternode \"command\" ...\n"
         "Set of commands to execute masternode related actions\n"
         "\nArguments:\n"
         "1. \"command\"        (string or set of strings, required) The command to execute\n"
