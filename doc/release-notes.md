@@ -162,11 +162,20 @@ There are a few changes in existing RPC interfaces in this release:
 - `privatesend_balance` field is shown in all related RPC results regardless of the Lite Mode or PrivateSend state
 
 There are also new RPC commands:
+- `abortrescan`
+- `combinerawtransaction`
 - `getbestchainlock`
+- `getblockstats`
+- `getchaintxstats`
 - `getmerkleblocks`
 - `getprivatesendinfo`
+- `listwallets`
+- `logging`
+- `uptime`
 
 `getpoolinfo` was deprecated in favor of `getprivatesendinfo` and no longer returns any data.
+
+`instantsendtoaddress` was removed (since InstantSend is the default for all transactions).
 
 Make sure to check Bitcoin Core 0.15 release notes in a [section](#backports-from-bitcoin-core-015) below
 for more RPC changes.
