@@ -70,23 +70,23 @@ should start creating blocks signalling bit 5 in `version` field of the block he
 
 Dynamic Activation Thresholds
 -----------------------------
-In Dash we used to use lower thresholds (80% vs 95% in BTC) to activate upgrades
-via BIP9-like mechanism for quite some time. While it's preferable to have as much
-of the network hashrate to signal update readiness as possible this can result in
-quite lengthy upgrades sometimes when one large non-upgraded entity would stale
-the whole progress. Simply lowering thresholds even further can result in network
-upgrades being too fast which can cause some chaos potentially. This version
+In Dash we have used lower thresholds (80% vs 95% in BTC) to activate upgrades
+via a BIP9-like mechanism for quite some time. While it's preferable to have as much
+of the network hashrate to signal update readiness as possible, this can result in
+quite lengthy upgrades if one large non-upgraded entity stalls
+all progress. Simply lowering thresholds even further can result in network
+upgrades being too fast which can potentially cause some chaos. This version
 implements BIP9-like dynamic activation thresholds which drop from some initial
-level to a minimally acceptable one over time at an increasing rate providing
+level to a minimally acceptable one over time at an increasing rate. This provides
 a safe non-blocking way of activating proposals.
 
 This mechanism applies to the Block Reward Reallocation proposal mentioned above
-threshold for which will begin at an 80% level and decay down to 60% over the
+for which the threshold will begin at an 80% level and decay down to 60% over the
 course of 10 periods.
 
 Concentrated Recovery
 ---------------------
-In the current system, signature shares are propagated to all LLMQ members,
+In the current system, signature shares are propagated to all LLMQ members
 until one of them has enough shares collected to recover the signature. Until
 this recovered signature is propagated in the LLMQ, all members will keep
 propagating shares and verifying each one. This causes significant load on the
@@ -97,14 +97,14 @@ so that this node can recover the signature and propagate the recovered signatur
 This way only the recovered signature needs to be propagated and verified by all
 members. After sending the share to this single node, each member waits for some
 time and repeats sending it to another deterministically selected member. To avoid
-making too many requests when nodes are under heavy load already we use an exponential
+making too many requests when nodes are under heavy load already, we use an exponential
 backoff starting with 2 seconds and limited to 10 seconds, so it should be a sequence
 of timeouts like `2, 4, 8, 10, 10, 10, ...`. This process is repeated until a recovered
 signature is finally created and propagated.
 
 The new system is activated with the newly added `SPORK_21_QUORUM_ALL_CONNECTED`
 which has two hardcoded values with a special meaning: `0` activates Concentrated
-Recovery for every LLMQ and `1` excludes `400_60` and `400_85` ones.
+Recovery for every LLMQ and `1` excludes `400_60` and `400_85` quorums.
 
 Increased number of masternode connections
 ------------------------------------------
@@ -121,7 +121,7 @@ This is also controlled via `SPORK_21_QUORUM_ALL_CONNECTED`.
 
 Masternode Connection Probing
 -----------------------------
-While each member must have a connection to each other member, it's not necessary
+While each LLMQ member must have a connection to each other member, it's not necessary
 for all members to actually connect to all other members. This is because only
 one of a pair of two masternodes need to initiate the connection while the other one can
 wait for an incoming connection. Probing is done in the case where a masternode doesn't
@@ -186,12 +186,12 @@ PrivateSend coin management improvements
 ----------------------------------------
 A new algorithm for creation of mixing denominations was implemented which
 should reduce the number of the smallest inputs created and give users more
-control on soft and hard caps. A much more accurate fee management algortihm was
+control on soft and hard caps. A much more accurate fee management algorithm was
 also implemented which should fix issues for users who have custom fees
 specified in wallet config or in times when network is under load.
 
 There is a new "PrivateSend" tab in the GUI which allows spending fully
-mixed coins only. CoinControl feature was also improved to display coins
+mixed coins only. The CoinControl feature was also improved to display coins
 based on the tab it was opened in, to protect users from accidentally spending
 mixed and non-mixed coins in the same transaction and to give better overview of
 spendable mixed coins.
@@ -199,7 +199,7 @@ spendable mixed coins.
 PrivateSend Random Round Mixing
 -------------------------------
 Some potential attacks on PrivateSend assume that all inputs had been mixed
-for the same number of rounds (up to 16). While this assumtion alone is not
+for the same number of rounds (up to 16). While this assumption alone is not
 enough to break PrivateSend privacy, it could still provide some additional
 information for other methods like cluster analysis and help to narrow results.
 
@@ -234,8 +234,8 @@ Sporks
 Two new sporks were introduced in this version:
 - `SPORK_21_QUORUM_ALL_CONNECTED` allows to control Concentrated Recovery and
 Masternode Probing activation;
-- `SPORK_22_PS_MORE_PARTICIPANTS` rises the number of users that can participate
-in a single PrivateSend mixng transaction to 20.
+- `SPORK_22_PS_MORE_PARTICIPANTS` raises the number of users that can participate
+in a single PrivateSend mixing transaction to 20.
 
 Sporks `SPORK_15_DETERMINISTIC_MNS_ENABLED`, `SPORK_16_INSTANTSEND_AUTOLOCKS`
 and `SPORK_20_INSTANTSEND_LLMQ_BASED` which were previously deprecated in v0.15
