@@ -46,7 +46,7 @@ public:
     template<typename Stream>
     inline void SerializeWithoutSig(Stream& s) const
     {
-       s << static_cast<uint8_t>(llmqType);
+        s << static_cast<uint8_t>(llmqType);
         s << quorumHash;
         s << proTxHash;
         s << *vvec;
@@ -152,6 +152,7 @@ public:
     Consensus::LLMQType llmqType{Consensus::LLMQType::LLMQ_NONE};
     uint256 quorumHash;
     uint256 proTxHash;
+    //quorumIndex [0-64]
     uint32_t quorumIndex;
     std::vector<bool> validMembers;
 
