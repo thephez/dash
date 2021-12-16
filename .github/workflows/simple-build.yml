@@ -16,6 +16,9 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v2
 
+    - name: Install dependencies
+      run: sudo apt-get install curl build-essential libtool autotools-dev automake pkg-config python3 bsdmainutils
+
     - name: Build depends
       run: |
         cd depends
@@ -23,7 +26,6 @@ jobs:
 
     - name: Build Dash Core
       run: |
-        cd ..
         ./autogen.sh
         ./configure --prefix=`pwd`/depends/x86_64-pc-linux-gnu
         make -j $(nproc)
