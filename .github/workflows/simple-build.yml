@@ -21,3 +21,12 @@ jobs:
         cd depends
         make -j $(nproc)
 
+    - name: Build Dash Core
+      run: |
+        cd ..
+        ./autogen.sh
+        ./configure --prefix=`pwd`/depends/x86_64-pc-linux-gnu
+        make -j $(nproc)
+
+    - name: View results
+      run: ls src/
