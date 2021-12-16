@@ -38,4 +38,4 @@ jobs:
         make -j $(nproc)
 
     - name: View results
-      run: ls src/
+      run: ls src/dash* -alh
