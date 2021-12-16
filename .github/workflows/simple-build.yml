@@ -1,0 +1,23 @@
+name: Basic-Build
+# Workflow file for basic builds
+on:
+  push:
+  #   branches:
+  #     - master
+  pull_request: {}
+  workflow_dispatch:
+
+jobs:
+  Linux:
+    name: build-linux
+    runs-on: ubuntu-20.04
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: Build depends
+      run: |
+        cd depends
+        make -j $(nproc)
+
