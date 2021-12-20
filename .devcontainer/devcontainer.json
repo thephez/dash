@@ -23,7 +23,7 @@
 
 	// Use 'postCreateCommand' to run commands after the container is created.
 	// "postCreateCommand": "gcc -v",
-	"postCreateCommand": "sudo apt-get install curl build-essential libtool autotools-dev automake pkg-config python3 bsdmainutils",
+	"postCreateCommand": "sudo apt-get install curl build-essential libtool autotools-dev automake pkg-config python3 bsdmainutils librsvg2-bin libtiff-tools imagemagick libcap-dev libz-dev libbz2-dev python3-setuptools libtinfo5",
 
 	// Comment out connect as root instead. More info: https://aka.ms/vscode-remote/containers/non-root.
 	"remoteUser": "vscode",
