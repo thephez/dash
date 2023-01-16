@@ -96,7 +96,7 @@ class PruneTest(BitcoinTestFramework):
             ["-disablegovernance","-txindex=0","-maxreceivebuffer=20000","-prune=550"] + DEPLOYMENT_ARGS,
             ["-disablegovernance","-txindex=0","-maxreceivebuffer=20000","-blockmaxsize=999000"] + DEPLOYMENT_ARGS,
             ["-disablegovernance","-txindex=0","-maxreceivebuffer=20000","-blockmaxsize=999000"] + DEPLOYMENT_ARGS,
-            ["-disablegovernance","-txindex=0","-prune=550"] + DEPLOYMENT_ARGS,
+            ["-disablegovernance","-txindex=0","-prune=550", "-blockfilterindex=1"] + DEPLOYMENT_ARGS,
         ]
         self.rpc_timeout = 120
 
@@ -378,7 +378,7 @@ class PruneTest(BitcoinTestFramework):
         self.connect_nodes(0, 5)
         nds = [self.nodes[0], self.nodes[5]]
         self.sync_blocks(nds, wait=5, timeout=300)
-        self.restart_node(5, extra_args=["-disablegovernance", "-txindex=0", "-prune=550"] + DEPLOYMENT_ARGS, expected_stderr=EXPECTED_STDERR_NO_GOV_PRUNE) # restart to trigger rescan
+        self.restart_node(5, extra_args=["-disablegovernance", "-txindex=0", "-prune=550", "-blockfilterindex=1"] + DEPLOYMENT_ARGS, expected_stderr=EXPECTED_STDERR_NO_GOV_PRUNE) # restart to trigger rescan
         self.log.info("Success")
 
     def run_test(self):
@@ -497,6 +497,8 @@ class PruneTest(BitcoinTestFramework):
         self.log.info("Test invalid pruning command line options")
         self.test_invalid_command_line_options()
 
+        self.test_scanblocks_pruned()
+
         # NOTE: this is a Dash-specific part, it should be the very last one before "Done"
         self.log.info("Stopping pruned nodes manually")
         for i in range(2, 6):
@@ -504,6 +506,17 @@ class PruneTest(BitcoinTestFramework):
             self.stop_node(i, expected_stderr=EXPECTED_STDERR_NO_GOV_PRUNE)
 
         self.log.info("Done")
+
+    def test_scanblocks_pruned(self):
+        node = self.nodes[5]
+        genesis_blockhash = node.getblockhash(0)
+        false_positive_spk = bytes.fromhex("1400000000000000000000000000000000000ad23b")
+
+        assert genesis_blockhash in node.scanblocks(
+            "start", [{"desc": f"raw({false_positive_spk.hex()})"}], 0, 0)['relevant_blocks']
+
+        assert_raises_rpc_error(-1, "Block not available (pruned data)", node.scanblocks,
+            "start", [{"desc": f"raw({false_positive_spk.hex()})"}], 0, 0, "basic", {"filter_false_positives": True})
 
 if __name__ == '__main__':
     PruneTest().main()
