@@ -7,11 +7,16 @@
 #define BITCOIN_NODE_UTXO_SNAPSHOT_H
 
 #include <serialize.h>
-#include <uint256.h>
+#include <kernel/cs_main.h>
 #include <util/fs.h>
-#include <validation.h>
+#include <sync.h>
+#include <uint256.h>
 
+#include <cstdint>
 #include <optional>
+#include <string_view>
+
+class Chainstate;
 
 namespace node {
 //! Metadata describing a serialized version of a UTXO set from which an
