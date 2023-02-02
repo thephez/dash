@@ -343,6 +343,16 @@ void OverviewPage::setWalletModel(WalletModel *model)
     }
 }
 
+// Only show the most recent m_num_items rows
+void OverviewPage::LimitTransactionRows()
+{
+    if (filter && ui->listTransactions && ui->listTransactions->model() && filter.get() == ui->listTransactions->model()) {
+        for (int i = 0; i < filter->rowCount(); ++i) {
+            ui->listTransactions->setRowHidden(i, i >= m_num_items);
+        }
+    }
+}
+
 void OverviewPage::updateDisplayUnit()
 {
     if (walletModel && walletModel->getOptionsModel()) {
@@ -761,13 +771,19 @@ void OverviewPage::SetupTransactionList(int nNumItems)
         filter->setShowInactive(false);
         filter->sort(TransactionTableModel::Date, Qt::DescendingOrder);
         ui->listTransactions->setModel(filter.get());
+
+        connect(filter.get(), &TransactionFilterProxy::rowsInserted, this, &OverviewPage::LimitTransactionRows);
+        connect(filter.get(), &TransactionFilterProxy::rowsRemoved, this, &OverviewPage::LimitTransactionRows);
+        connect(filter.get(), &TransactionFilterProxy::rowsMoved, this, &OverviewPage::LimitTransactionRows);
+        connect(filter.get(), &TransactionFilterProxy::modelReset, this, &OverviewPage::LimitTransactionRows);
     }
 
-    if (filter->rowCount() == nNumItems) {
+    if (m_num_items == nNumItems) {
         return;
     }
+    m_num_items = nNumItems;
+    LimitTransactionRows();
 
-    filter->setLimit(nNumItems);
     ui->listTransactions->setMinimumHeight(nNumItems * ITEM_HEIGHT);
 }
 

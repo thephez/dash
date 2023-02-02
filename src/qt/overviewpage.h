@@ -63,11 +63,14 @@ private:
 
     TxViewDelegate *txdelegate;
     std::unique_ptr<TransactionFilterProxy> filter;
+    //! Number of most recent transactions the overview list keeps visible
+    int m_num_items{0};
 
     void SetupTransactionList(int nNumItems);
     void DisableCoinJoinCompletely();
 
 private Q_SLOTS:
+    void LimitTransactionRows();
     void toggleCoinJoin();
     void updateDisplayUnit();
     void updateCoinJoinProgress();
