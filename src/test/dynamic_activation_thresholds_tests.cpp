@@ -15,7 +15,7 @@
 using node::BlockAssembler;
 
 const auto deployment_id = Consensus::DEPLOYMENT_TESTDUMMY;
-constexpr int window{100}, th_start{80}, th_end{60};
+constexpr int window{20}, th_start{16}, th_end{12};
 
 static constexpr int threshold(int attempt)
 {
@@ -30,7 +30,7 @@ static constexpr int threshold(int attempt)
 struct TestChainDATSetup : public TestChainSetup
 {
     TestChainDATSetup() :
-        TestChainSetup(window - 2, CBaseChainParams::REGTEST, {"-vbparams=testdummy:0:999999999999:0:100:80:60:5:0"}) {}
+        TestChainSetup(window - 2, CBaseChainParams::REGTEST, {"-vbparams=testdummy:0:999999999999:0:20:16:12:5:0"}) {}
 
     void signal(int num_blocks, bool expected_lockin)
     {
