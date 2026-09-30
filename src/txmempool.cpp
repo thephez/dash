@@ -1052,8 +1052,12 @@ void CTxMemPool::removeProTxSpentCollateralConflicts(const CTransaction &tx)
     for (const auto& in : tx.vin) {
         auto collateralIt = mapProTxCollaterals.find(in.prevout);
         if (collateralIt != mapProTxCollaterals.end()) {
-            // These are not yet mined ProRegTxs
-            removeProTxReferences(collateralIt->second);
+            // A not yet mined ProRegTx whose collateral is now spent, and TXs referring to it
+            const uint256 proRegTxHash{collateralIt->second};
+            if (auto it = mapTx.find(proRegTxHash); it != mapTx.end()) {
+                removeRecursive(it->GetTx(), MemPoolRemovalReason::CONFLICT);
+            }
+            removeProTxReferences(proRegTxHash);
         }
         auto dmn = mnList.GetMNByCollateral(in.prevout);
         if (dmn) {
