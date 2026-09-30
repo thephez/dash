@@ -1638,6 +1638,7 @@ void FuncTestMempoolProUpdatesSpentCollateral(TestChainSetup& setup)
     auto tx_up_serv = CreateProUpServTx(chainman, utxos, proTxHash, operatorKey, /*port=*/2, CScript(), setup.coinbaseKey);
     auto tx_up_reg = CreateProUpRegTx(chainman, utxos, proTxHash, ownerKey, operatorKey.GetPublicKey(),
                                       ownerKey.GetPubKey().GetID(), scriptPayout, setup.coinbaseKey);
+    auto tx_up_rev = CreateProUpRevTx(chainman, utxos, proTxHash, operatorKey, setup.coinbaseKey);
 
     CMutableTransaction tx_unrelated;
     tx_unrelated.vin.emplace_back(COutPoint(tx_collateral.GetHash(), collateralOutpoint.n + 1));
@@ -1653,15 +1654,18 @@ void FuncTestMempoolProUpdatesSpentCollateral(TestChainSetup& setup)
 
     testPool.addUnchecked(entry.FromTx(tx_up_serv));
     testPool.addUnchecked(entry.FromTx(tx_up_reg));
-    BOOST_CHECK_EQUAL(testPool.size(), 2U);
+    testPool.addUnchecked(entry.FromTx(tx_up_rev));
+    BOOST_CHECK_EQUAL(testPool.size(), 3U);
 
     testPool.removeForBlock({MakeTransactionRef(tx_unrelated)}, tip_height() + 1);
     BOOST_CHECK(testPool.exists(tx_up_serv.GetHash()));
     BOOST_CHECK(testPool.exists(tx_up_reg.GetHash()));
+    BOOST_CHECK(testPool.exists(tx_up_rev.GetHash()));
 
     testPool.removeForBlock({MakeTransactionRef(tx_spend)}, tip_height() + 1);
     BOOST_CHECK(!testPool.exists(tx_up_serv.GetHash()));
     BOOST_CHECK(!testPool.exists(tx_up_reg.GetHash()));
+    BOOST_CHECK(!testPool.exists(tx_up_rev.GetHash()));
 }
 
 // A pending ProUpServTx is signed by the operator key and stays valid across a registrar update
