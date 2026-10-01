@@ -1596,6 +1596,51 @@ void FuncTestMempoolProRegSpentCollateral(TestChainSetup& setup)
     BOOST_CHECK(!testPool.exists(tx_reg.GetHash()));
 }
 
+// A pending ProUpServTx is signed by the operator key and stays valid across a registrar update
+// that keeps that key, so only a registrar update that changes the key may evict it.
+void FuncTestMempoolProUpServOperatorKeyChange(TestChainSetup& setup)
+{
+    auto& chainman = *Assert(setup.m_node.chainman.get());
+    auto& dmnman = *Assert(setup.m_node.dmnman);
+    auto tip_index = [&] { return WITH_LOCK(::cs_main, return chainman.ActiveChain().Tip()); };
+    auto tip_height = [&] { return WITH_LOCK(::cs_main, return chainman.ActiveChain().Height()); };
+
+    const CScript coinbase_pk = GetScriptForRawPubKey(setup.coinbaseKey.GetPubKey());
+    auto utxos = BuildSimpleUtxoMap(setup.m_coinbase_txns);
+    const CScript scriptPayout = GenerateRandomAddress();
+
+    CKey ownerKey;
+    CBLSSecretKey operatorKey;
+    auto tx_reg = CreateProRegTx(chainman, utxos, /*port=*/1, scriptPayout, setup.coinbaseKey, ownerKey, operatorKey);
+    const uint256 proTxHash = tx_reg.GetHash();
+    auto block = std::make_shared<CBlock>(setup.CreateBlock({tx_reg}, coinbase_pk, chainman.ActiveChainstate()));
+    BOOST_REQUIRE(chainman.ProcessNewBlock(block, true, nullptr));
+    dmnman.UpdatedBlockTip(tip_index());
+    BOOST_REQUIRE(dmnman.GetListAtChainTip().HasMN(proTxHash));
+
+    CBLSSecretKey newOperatorKey;
+    newOperatorKey.MakeNewKey();
+
+    auto tx_up_serv = CreateProUpServTx(chainman, utxos, proTxHash, operatorKey, /*port=*/2, CScript(), setup.coinbaseKey);
+    auto tx_same_key = CreateProUpRegTx(chainman, utxos, proTxHash, ownerKey, operatorKey.GetPublicKey(),
+                                        ownerKey.GetPubKey().GetID(), scriptPayout, setup.coinbaseKey);
+    auto tx_new_key = CreateProUpRegTx(chainman, utxos, proTxHash, ownerKey, newOperatorKey.GetPublicKey(),
+                                       ownerKey.GetPubKey().GetID(), scriptPayout, setup.coinbaseKey);
+
+    CTxMemPool testPool{MemPoolOptionsForTest(setup.m_node)};
+    TestMemPoolEntryHelper entry;
+    LOCK2(cs_main, testPool.cs);
+
+    testPool.addUnchecked(entry.FromTx(tx_up_serv));
+    BOOST_CHECK_EQUAL(testPool.size(), 1U);
+
+    testPool.removeForBlock({MakeTransactionRef(tx_same_key)}, tip_height() + 1);
+    BOOST_CHECK(testPool.exists(tx_up_serv.GetHash()));
+
+    testPool.removeForBlock({MakeTransactionRef(tx_new_key)}, tip_height() + 1);
+    BOOST_CHECK(!testPool.exists(tx_up_serv.GetHash()));
+}
+
 void FuncVerifyDB(TestChainSetup& setup)
 {
     auto& chainman = *Assert(setup.m_node.chainman.get());
@@ -3549,6 +3594,12 @@ BOOST_AUTO_TEST_CASE(test_mempool_proreg_spent_collateral)
 {
     TestChainV19Setup setup;
     FuncTestMempoolProRegSpentCollateral(setup);
+}
+
+BOOST_AUTO_TEST_CASE(test_mempool_proupserv_operator_key_change)
+{
+    TestChainV19Setup setup;
+    FuncTestMempoolProUpServOperatorKeyChange(setup);
 }
 
 //This one can be started only with legacy scheme, since inside undo block will switch it back to legacy resulting into an inconsistency
