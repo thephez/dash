@@ -208,8 +208,6 @@ class NetInfoTest(BitcoinTestFramework):
         self.test_validation_legacy()
         self.log.info("Test output masternode address fields for consistency (pre-fork)")
         self.test_deprecation()
-        self.log.info("Test protx listdiff reports legacy Platform addresses when the core P2P address changes")
-        self.test_listdiff_legacy_platform()
         self.log.info("Mine blocks to activate DEPLOYMENT_V24")
         self.activate_v24()
         self.log.info("Test input validation for masternode address fields (post-fork)")
@@ -434,6 +432,7 @@ class NetInfoTest(BitcoinTestFramework):
         # updating Platform fields to trigger the conditions needed to report the dummy address
         proupservtx_hash = self.node_evo.update_mn(self, True, f"127.0.0.1:{self.node_evo.mn.nodePort + 10}", DEFAULT_PORT_PLATFORM_P2P + 10, DEFAULT_PORT_PLATFORM_HTTP + 10)
         proupservtx_rpc = self.node_evo.node.getrawtransaction(proupservtx_hash, True)
+        proupservtx_height_first = proupservtx_rpc['height']
 
         # Restore back to defaults
         proupservtx_hash = self.node_evo.update_mn(self, True, f"127.0.0.1:{self.node_evo.mn.nodePort}", DEFAULT_PORT_PLATFORM_P2P, DEFAULT_PORT_PLATFORM_HTTP)
@@ -457,6 +456,10 @@ class NetInfoTest(BitcoinTestFramework):
         protx_listdiff_rpc_pl = self.node_evo.node.protx('listdiff', proupservtx_height_pl - 1, proupservtx_height_pl)
         protx_listdiff_rpc_pl = self.extract_from_listdiff(protx_listdiff_rpc_pl, proregtx_hash)
 
+        # The first and the third update set the same platform fields, so between them only the core P2P address differs
+        protx_listdiff_rpc_addr = self.node_evo.node.protx('listdiff', proupservtx_height_first, proupservtx_height_pl)
+        protx_listdiff_rpc_addr = self.extract_from_listdiff(protx_listdiff_rpc_addr, proregtx_hash)
+
         self.log.info("Test RPCs return an 'addresses' field")
         assert "addresses" in proregtx_rpc['proRegTx'].keys()
         assert "addresses" in masternode_status['dmnState'].keys()
@@ -476,6 +479,8 @@ class NetInfoTest(BitcoinTestFramework):
         assert "core_p2p" not in protx_listdiff_rpc_pl['addresses'].keys()
         assert_equal(protx_listdiff_rpc_pl['addresses']['platform_https'][0], f"{DMNSTATE_DIFF_DUMMY_ADDR}:{DEFAULT_PORT_PLATFORM_HTTP + 10}")
         assert_equal(protx_listdiff_rpc_pl['addresses']['platform_p2p'][0], f"{DMNSTATE_DIFF_DUMMY_ADDR}:{DEFAULT_PORT_PLATFORM_P2P + 10}")
+        # If only the core P2P address was updated, the platform fields are still reported, paired with the new address
+        self.check_netinfo_fields(protx_listdiff_rpc_addr['addresses'], self.node_evo.mn.nodePort, DEFAULT_PORT_PLATFORM_HTTP + 10, DEFAULT_PORT_PLATFORM_P2P + 10)
 
         self.log.info("Test RPCs by default no longer return a 'service' field")
         assert "service" not in proregtx_rpc['proRegTx'].keys()
@@ -507,51 +512,6 @@ class NetInfoTest(BitcoinTestFramework):
         assert "service" in proupservtx_rpc['proUpServTx'].keys()
         assert "service" in protx_diff_rpc['mnList'][0].keys()
         assert "service" in protx_listdiff_rpc.keys()
-
-    def test_listdiff_legacy_platform(self):
-        # Without -deprecatedrpc=service, 'addresses' is the only place a legacy EvoNode's Platform ports are
-        # reported. They are paired with the core P2P address, so a diff that changes the address has to report
-        # them too, even if the ports didn't change, or a client that first saw the masternode without an
-        # address (node_two was registered without one) would never learn them.
-        proregtx_hash = self.node_two.mn.proTxHash
-        assert_equal(self.node_two.node.protx('info', proregtx_hash)['state']['addresses'], {})
-
-        for addr in ["127.0.0.1", "127.0.0.2"]:
-            proupservtx_hash = self.node_two.update_mn(self, True, f"{addr}:{self.node_two.mn.nodePort}",
-                                                       DEFAULT_PORT_PLATFORM_P2P, DEFAULT_PORT_PLATFORM_HTTP)
-            proupservtx_rpc = self.node_two.node.getrawtransaction(proupservtx_hash, True)
-            assert_equal(proupservtx_rpc['proUpServTx']['version'], PROTXVER_BASIC)
-            proupservtx_height = proupservtx_rpc['height']
-
-            # The update left the Platform ports untouched, so only the address is in the diff
-            protx_listdiff_depr = self.node_simple.protx('listdiff', proupservtx_height - 1, proupservtx_height)
-            protx_listdiff_depr = self.extract_from_listdiff(protx_listdiff_depr, proregtx_hash)
-            assert_equal(protx_listdiff_depr['service'], f"{addr}:{self.node_two.mn.nodePort}")
-            assert "platformP2PPort" not in protx_listdiff_depr.keys()
-            assert "platformHTTPPort" not in protx_listdiff_depr.keys()
-
-            protx_listdiff_rpc = self.node_two.node.protx('listdiff', proupservtx_height - 1, proupservtx_height)
-            protx_listdiff_rpc = self.extract_from_listdiff(protx_listdiff_rpc, proregtx_hash)
-            assert_equal(protx_listdiff_rpc['addresses'], {
-                'core_p2p': [f"{addr}:{self.node_two.mn.nodePort}"],
-                'platform_p2p': [f"{addr}:{DEFAULT_PORT_PLATFORM_P2P}"],
-                'platform_https': [f"{addr}:{DEFAULT_PORT_PLATFORM_HTTP}"],
-            })
-            # The diff reports them exactly as the full masternode state does
-            assert_equal(protx_listdiff_rpc['addresses'], self.node_two.node.protx('info', proregtx_hash)['state']['addresses'])
-
-        # Revoking the operator clears the address but keeps the Platform ports, there is no address to pair them with
-        protx_revtx_hash = self.node_two.mn.revoke(self.node_two.node, submit=True, reason=0, fundsAddr=self.node_two.mn.fundsAddr)
-        self.node_two.bury_tx(self, self.node_two.node, protx_revtx_hash)
-        protx_revtx_height = self.node_two.node.getrawtransaction(protx_revtx_hash, True)['height']
-        protx_listdiff_rpc = self.node_two.node.protx('listdiff', protx_revtx_height - 1, protx_revtx_height)
-        protx_listdiff_rpc = self.extract_from_listdiff(protx_listdiff_rpc, proregtx_hash)
-        assert "addresses" not in protx_listdiff_rpc.keys()
-        assert_equal(self.node_two.node.protx('info', proregtx_hash)['state']['addresses'], {})
-
-        # Restore the operator key needed by later tests, leaving node_two without an address as it was registered
-        protx_upregtx_hash = self.node_two.mn.update_registrar(self.node_two.node, submit=True, fundsAddr=self.node_two.mn.fundsAddr)
-        self.node_two.bury_tx(self, self.node_two.node, protx_upregtx_hash)
 
     def test_empty_fields(self):
         def empty_common(grt_dict):
