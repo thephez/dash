@@ -47,7 +47,7 @@ std::vector<CScript> CDeterministicMNState::GetOwnerRewardScripts() const
     return ret;
 }
 
-UniValue CDeterministicMNStateDiff::ToJson(MnType nType, const CDeterministicMNState& target_state) const
+UniValue CDeterministicMNStateDiff::ToJson(MnType nType) const
 {
     UniValue obj(UniValue::VOBJ);
     if (fields & Field_nVersion) {
@@ -146,25 +146,22 @@ UniValue CDeterministicMNStateDiff::ToJson(MnType nType, const CDeterministicMNS
         if (nType == MnType::Evo && (!has_netinfo || !state.netInfo->CanStorePlatform())) {
             auto unknownAddr = [](uint16_t port) -> UniValue {
                 UniValue obj(UniValue::VARR);
-                // The address wasn't changed in the diff, so report the port number in
-                // addr:port format with a placeholder rather than the unchanged address
+                // We don't know what the address is because it wasn't changed in the
+                // diff but we still need to report the port number in addr:port format
                 obj.push_back(strprintf("255.255.255.255:%d", port));
                 return obj;
             };
-            // Platform addresses are the primary address paired with the platform ports, so a new
-            // primary address changes them even if the ports didn't change
-            const bool has_new_primary = has_netinfo && !state.netInfo->IsEmpty();
-            if (has_new_primary || (fields & Field_platformP2PPort)) {
+            if (fields & Field_platformP2PPort) {
                 netInfoObj.pushKV(PurposeToString(NetInfoPurpose::PLATFORM_P2P).data(),
                                   (has_netinfo)
-                                      ? ArrFromService(CService(state.netInfo->GetPrimary(), target_state.platformP2PPort))
-                                      : unknownAddr(target_state.platformP2PPort));
+                                      ? ArrFromService(CService(state.netInfo->GetPrimary(), state.platformP2PPort))
+                                      : unknownAddr(state.platformP2PPort));
             }
-            if (has_new_primary || (fields & Field_platformHTTPPort)) {
+            if (fields & Field_platformHTTPPort) {
                 netInfoObj.pushKV(PurposeToString(NetInfoPurpose::PLATFORM_HTTPS).data(),
                                   (has_netinfo)
-                                      ? ArrFromService(CService(state.netInfo->GetPrimary(), target_state.platformHTTPPort))
-                                      : unknownAddr(target_state.platformHTTPPort));
+                                      ? ArrFromService(CService(state.netInfo->GetPrimary(), state.platformHTTPPort))
+                                      : unknownAddr(state.platformHTTPPort));
             }
         }
         if (!netInfoObj.empty()) {
