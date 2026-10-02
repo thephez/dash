@@ -283,7 +283,8 @@ public:
     CDeterministicMNStateDiff(deserialize_type, Stream& s) { s >> *this; }
 
     [[nodiscard]] static RPCResult GetJsonHelp(const std::string& key, bool optional);
-    [[nodiscard]] UniValue ToJson(MnType nType) const;
+    /** target_state is the masternode's full state that this diff results in, used for unchanged values the output depends on */
+    [[nodiscard]] UniValue ToJson(MnType nType, const CDeterministicMNState& target_state) const;
 
     SERIALIZE_METHODS(CDeterministicMNStateDiff, obj)
     {
