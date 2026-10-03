@@ -473,17 +473,17 @@ TestChainSetup::TestChainSetup(
     CCheckpointData checkpoints{
         {
             /*TestChainDATSetup=*/
-            {   98, uint256S("0x150e127929d578d8129b77a6cb7e2e343a1379aa3feaaa9cce59e0a645756a81") },
+            {   18, uint256S("0x79ffbee99c3f8448a5484564cba47830415dc96d1aed025576d8246dd24f1b0e") },
             /*TestChain100Setup=*/
             {  100, uint256S("0x6ffb83129c19ebdf1ae3771be6a67fe34b35f4c956326b9ba152fac1649f65ae") },
             /*TestChainV19BeforeActivationSetup=*/
             {  103, uint256S("0x13adad9565d0ca558f5675c50e3828f4354d26b64de044ebc88686056f30faab") },
             /*TestChainDIP3BeforeActivationSetup=*/
             {  107, uint256S("0x40233e79ab24bc7c3e5686ac2b63915e15e1b1deecc3d0919f7ec32a9433fdfb") },
+            /*TestChainV24SignalBeforeV19Setup=*/
+            {  124, uint256S("0x010f3b969b5fc666c0bc6d50fb351ab992855534e009fb9754bf674200f3325e") },
             /*TestChainDIP3BeforeActivationSetup=*/
             {  430, uint256S("0x0bcefaa33fec56cd84d05d0e76cd6a78badcc20f627d91903646de6a07930a14") },
-            /*TestChainV24SignalBeforeV19Setup=*/
-            {  494, uint256S("0x160b1ba2e583f9a99bd78ce2ba57da623ceab7ce7153bfad1df31089186602ac") },
             /*TestChainBRRBeforeActivationSetup=*/
             {  497, uint256S("0x0857a9b5db51835b1c828f019f4c664b5fe6c28ac44a6d868436930f832d31e5") },
         }

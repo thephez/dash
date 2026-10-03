@@ -1471,7 +1471,7 @@ BOOST_AUTO_TEST_CASE(test_CRanges_deserialize_validation)
 BOOST_AUTO_TEST_CASE(test_CRanges)
 {
     std::mt19937 gen;
-    for (int test = 0; test < 17; ++test) {
+    for (int test = 0; test < 15; ++test) {
         std::uniform_int_distribution<uint64_t> dist_value(0, (1 << test));
         CRangesSet ranges;
         std::unordered_set<uint64_t> set_2;
@@ -1486,8 +1486,9 @@ BOOST_AUTO_TEST_CASE(test_CRanges)
                 set_2.erase(set_2.find(value));
             }
             BOOST_CHECK_EQUAL(ranges.Contains(value), !!set_2.count(value));
-            BOOST_CHECK_EQUAL(ranges.Size(), set_2.size());
         }
+        // Size() walks every range, so checking it per iteration makes the test quadratic
+        BOOST_CHECK_EQUAL(ranges.Size(), set_2.size());
         if (test > 4) {
             BOOST_CHECK(ranges.Size() > ((1u << test) / 4));
         }

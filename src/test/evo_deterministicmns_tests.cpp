@@ -1795,9 +1795,9 @@ struct TestMNChainSetup : public TestChainSetup {
 
 struct TestChainV24SignalBeforeV19Setup : public TestMNChainSetup {
     TestChainV24SignalBeforeV19Setup() :
-        TestMNChainSetup(494,
-                         {"-testactivationheight=v19@500", "-testactivationheight=v20@500",
-                          "-testactivationheight=mn_rr@511", "-vbparams=v24:0:9999999999:510:1:1:1:5:0"})
+        TestMNChainSetup(124,
+                         {"-dip3params=109:120", "-testactivationheight=v19@130", "-testactivationheight=v20@130",
+                          "-testactivationheight=mn_rr@141", "-vbparams=v24:0:9999999999:140:1:1:1:5:0"})
     {
         assert(!IsV19Active());
         assert(!IsV24Active());
@@ -1811,7 +1811,7 @@ struct TestChainV24SignalBeforeV19Setup : public TestMNChainSetup {
 struct TestChainV24PendingSetup : public TestChainV24SignalBeforeV19Setup {
     TestChainV24PendingSetup()
     {
-        // Mine just enough to activate v19/v20 (height 500) while keeping v24 and mn_rr pending.
+        // Mine just enough to activate v19/v20 (height 130) while keeping v24 and mn_rr pending.
         for (int i = 0; i < 20 && !IsV19Active(); ++i) {
             ProcessBlock();
         }
