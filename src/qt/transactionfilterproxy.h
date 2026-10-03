@@ -59,13 +59,8 @@ public:
     void setMinAmount(const CAmount& minimum);
     void setWatchOnlyFilter(WatchOnlyFilter filter);
 
-    /** Set maximum number of rows returned, -1 if unlimited. */
-    void setLimit(int limit);
-
     /** Set whether to show conflicted transactions. */
     void setShowInactive(bool showInactive);
-
-    int rowCount(const QModelIndex &parent = QModelIndex()) const override;
 
 protected:
     bool filterAcceptsRow(int source_row, const QModelIndex & source_parent) const override;
@@ -77,7 +72,6 @@ private:
     quint32 typeFilter;
     WatchOnlyFilter watchOnlyFilter{WatchOnlyFilter_All};
     CAmount minAmount{0};
-    int limitRows{-1};
     bool showInactive{true};
 };
 
