@@ -877,7 +877,7 @@ bool CGovernanceObject::IsCollateralValid(const ChainstateManager& chainman, std
 
 int CGovernanceObject::CountMatchingVotes(const CDeterministicMNList& tip_mn_list, vote_signal_enum_t eVoteSignalIn, vote_outcome_enum_t eVoteOutcomeIn) const
 {
-    LOCK(cs);
+    AssertLockHeld(cs);
 
     int nCount = 0;
     for (const auto& [outpoint, recVote] : mapCurrentMNVotes) {
@@ -911,19 +911,19 @@ int CGovernanceObject::GetAbsoluteNoCount(const CDeterministicMNList& tip_mn_lis
 int CGovernanceObject::GetYesCount(const CDeterministicMNList& tip_mn_list, vote_signal_enum_t eVoteSignalIn) const
 {
     AssertLockNotHeld(cs);
-    return CountMatchingVotes(tip_mn_list, eVoteSignalIn, VOTE_OUTCOME_YES);
+    return WITH_LOCK(cs, return CountMatchingVotes(tip_mn_list, eVoteSignalIn, VOTE_OUTCOME_YES));
 }
 
 int CGovernanceObject::GetNoCount(const CDeterministicMNList& tip_mn_list, vote_signal_enum_t eVoteSignalIn) const
 {
     AssertLockNotHeld(cs);
-    return CountMatchingVotes(tip_mn_list, eVoteSignalIn, VOTE_OUTCOME_NO);
+    return WITH_LOCK(cs, return CountMatchingVotes(tip_mn_list, eVoteSignalIn, VOTE_OUTCOME_NO));
 }
 
 int CGovernanceObject::GetAbstainCount(const CDeterministicMNList& tip_mn_list, vote_signal_enum_t eVoteSignalIn) const
 {
     AssertLockNotHeld(cs);
-    return CountMatchingVotes(tip_mn_list, eVoteSignalIn, VOTE_OUTCOME_ABSTAIN);
+    return WITH_LOCK(cs, return CountMatchingVotes(tip_mn_list, eVoteSignalIn, VOTE_OUTCOME_ABSTAIN));
 }
 
 CGovernanceObject::UniqueVoterCount CGovernanceObject::GetUniqueVoterCount(const CDeterministicMNList& tip_mn_list, vote_signal_enum_t eVoteSignalIn) const

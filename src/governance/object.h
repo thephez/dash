@@ -266,9 +266,6 @@ public:
 
     // GET VOTE COUNT FOR SIGNAL
 
-    int CountMatchingVotes(const CDeterministicMNList& tip_mn_list, vote_signal_enum_t eVoteSignalIn, vote_outcome_enum_t eVoteOutcomeIn) const
-        EXCLUSIVE_LOCKS_REQUIRED(!cs);
-
     int GetAbsoluteYesCount(const CDeterministicMNList& tip_mn_list, vote_signal_enum_t eVoteSignalIn) const
         EXCLUSIVE_LOCKS_REQUIRED(!cs);
     int GetAbsoluteNoCount(const CDeterministicMNList& tip_mn_list, vote_signal_enum_t eVoteSignalIn) const
@@ -350,6 +347,10 @@ public:
     // Returns deleted vote hashes.
     std::set<uint256> RemoveInvalidVotes(const CDeterministicMNList& tip_mn_list, const COutPoint& mnOutpoint)
         EXCLUSIVE_LOCKS_REQUIRED(!cs);
+
+private:
+    int CountMatchingVotes(const CDeterministicMNList& tip_mn_list, vote_signal_enum_t eVoteSignalIn,
+                           vote_outcome_enum_t eVoteOutcomeIn) const EXCLUSIVE_LOCKS_REQUIRED(cs);
 };
 
 namespace governance {
