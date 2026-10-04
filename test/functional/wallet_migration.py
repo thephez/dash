@@ -337,12 +337,15 @@ class WalletMigrationTest(BitcoinTestFramework):
         send = default.sendall(recipients=[default.getnewaddress()], options={"inputs": [{"txid": received_sent_watchonly_txid, "vout": received_sent_watchonly_vout}]})
         sent_watchonly_txid = send["txid"]
 
-        self.generate(self.nodes[0], 1)
+        # Tx that has both a watchonly and spendable output
+        watchonly_spendable_txid = default.send(outputs=[{received_addr: 1}, {import_addr:1}])["txid"]
+
+        self.generate(self.nodes[0], 2)
 
         balances = imports0.getbalances()
         spendable_bal = balances["mine"]["trusted"]
         watchonly_bal = balances["watchonly"]["trusted"]
-        assert_equal(len(imports0.listtransactions(include_watchonly=True)), 4)
+        assert_equal(len(imports0.listtransactions(include_watchonly=True)), 6)
 
         # Migrate
         self.migrate_wallet(imports0)
@@ -351,8 +354,9 @@ class WalletMigrationTest(BitcoinTestFramework):
         assert_raises_rpc_error(-5, "Invalid or non-wallet transaction id", imports0.gettransaction, received_watchonly_txid)
         assert_raises_rpc_error(-5, "Invalid or non-wallet transaction id", imports0.gettransaction, received_sent_watchonly_txid)
         assert_raises_rpc_error(-5, "Invalid or non-wallet transaction id", imports0.gettransaction, sent_watchonly_txid)
-        assert_equal(len(imports0.listtransactions(include_watchonly=True)), 1)
+        assert_equal(len(imports0.listtransactions(include_watchonly=True)), 2)
         imports0.gettransaction(received_txid)
+        imports0.gettransaction(watchonly_spendable_txid)
         assert_equal(imports0.getbalance(), spendable_bal)
 
         assert_equal("imports0_watchonly" in self.nodes[0].listwallets(), True)
@@ -364,9 +368,10 @@ class WalletMigrationTest(BitcoinTestFramework):
         watchonly.gettransaction(received_watchonly_txid)
         watchonly.gettransaction(received_sent_watchonly_txid)
         watchonly.gettransaction(sent_watchonly_txid)
+        watchonly.gettransaction(watchonly_spendable_txid)
         assert_equal(watchonly.getbalance(), watchonly_bal)
         assert_raises_rpc_error(-5, "Invalid or non-wallet transaction id", watchonly.gettransaction, received_txid)
-        assert_equal(len(watchonly.listtransactions(include_watchonly=True)), 3)
+        assert_equal(len(watchonly.listtransactions(include_watchonly=True)), 4)
 
         # Check that labels were migrated and persisted to watchonly wallet
         self.nodes[0].unloadwallet("imports0_watchonly")
