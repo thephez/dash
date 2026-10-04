@@ -12,10 +12,11 @@ function __fish_dash_cli_get_commands_helper
     # Only keep the connection options given before the RPC command. Never pass
     # on the typed command or its arguments: they would be executed on every Tab
     # (e.g. `sendtoaddress <address> <amount> <Tab>` would send funds).
+    # -rpcwait* is dropped so Tab doesn't hang while the node is down.
     set --local base $cmd[1]
     for arg in $cmd[2..-1]
         string match --quiet --regex -- '^-' $arg; or break
-        if string match --quiet --regex -- '^--?(conf|datadir|testnet|regtest|devnet|chain|rpcconnect|rpcport|rpcuser|rpcpassword|rpccookiefile|rpcwallet|rpcclienttimeout)(=|$)' $arg
+        if string match --quiet --regex -- '^--?(conf|datadir|testnet|regtest|devnet|chain|rpc(?!wait))' $arg
             set --append base $arg
         end
     end
