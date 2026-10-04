@@ -3281,6 +3281,8 @@ std::shared_ptr<CWallet> CWallet::Create(WalletContext& context, const std::stri
                         error = strprintf(_("%s failed"), "SetSeed");
                         return nullptr;
                     }
+                    // add default account
+                    newHdChain.AddAccount();
                     LOCK(walletInstance->cs_wallet);
                     if (auto spk_man = walletInstance->GetLegacyScriptPubKeyMan()) {
                         if (!spk_man->AddHDChainSingle(newHdChain)) {
@@ -3288,8 +3290,6 @@ std::shared_ptr<CWallet> CWallet::Create(WalletContext& context, const std::stri
                             return nullptr;
                         }
                     }
-                    // add default account
-                    newHdChain.AddAccount();
                 } else {
                     if (args.IsArgSet("-hdseed") && !IsHex(strSeed)) {
                         error = strprintf(_("%s -- Incorrect seed, it should be a hex string"), __func__);
