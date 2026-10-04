@@ -1189,6 +1189,7 @@ BOOST_AUTO_TEST_CASE(check_max_weight)
         }, m_node);
 
         BOOST_CHECK(!result);
+        BOOST_CHECK(util::ErrorString(result).original.find("The inputs size exceeds the maximum weight") != std::string::npos);
     }
 
     {
