@@ -11,6 +11,7 @@ from test_framework.netutil import (
     addr_to_hex,
     get_bind_addrs,
 )
+from test_framework.p2p import P2PInterface
 from test_framework.test_framework import (
     BitcoinTestFramework,
 )
@@ -27,7 +28,7 @@ class BindExtraTest(BitcoinTestFramework):
         # Avoid any -bind= on the command line. Force the framework to avoid
         # adding -bind=127.0.0.1.
         self.bind_to_localhost_only = False
-        self.num_nodes = 3
+        self.num_nodes = 4
 
     def skip_test_if_missing_module(self):
         # Due to OS-specific network stats queries, we only run on Linux.
@@ -60,14 +61,26 @@ class BindExtraTest(BitcoinTestFramework):
         )
         port += 2
 
-        # Node2, no -bind=...=onion, thus no extra port for Tor target.
+        # Node2, no -bind=...=onion and -listenonion=0, thus no extra port for Tor target.
         self.expected.append(
             [
-                [f"-bind=127.0.0.1:{port}"],
+                [f"-bind=127.0.0.1:{port}", "-listenonion=0"],
                 [(loopback_ipv4, port)]
             ],
         )
         port += 1
+
+        # Node3, no -bind=...=onion but -listenonion=1, thus the default Tor target
+        # 127.0.0.1:19896 (regtest) is bound in addition, so that incoming Tor
+        # connections are not mixed with the ones on -bind=... Point -torcontrol at
+        # an unused port so that no onion service is created via a local Tor.
+        self.expected.append(
+            [
+                [f"-bind=127.0.0.1:{port}", "-listenonion=1", f"-torcontrol=127.0.0.1:{port + 1}"],
+                [(loopback_ipv4, port), (loopback_ipv4, 19896)]
+            ],
+        )
+        port += 2
 
         self.extra_args = list(map(lambda e: e[0], self.expected))
         self.setup_nodes()
@@ -86,6 +99,10 @@ class BindExtraTest(BitcoinTestFramework):
             # Remove RPC ports. They are not relevant for this test.
             binds = set(filter(lambda e: e[1] != rpc_port(i), binds))
             assert_equal(binds, set(expected_services))
+
+        self.log.info("Checking that a connection to the default Tor target of node 3 is tagged as onion")
+        self.nodes[3].add_p2p_connection(P2PInterface(), dstport=19896)
+        assert_equal([peer["network"] for peer in self.nodes[3].getpeerinfo()], ["onion"])
 
 if __name__ == '__main__':
     BindExtraTest().main()
