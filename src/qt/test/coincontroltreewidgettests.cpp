@@ -34,6 +34,7 @@ QTreeWidgetItem* AddCoin(CoinControlTreeWidget& tree, QTreeWidgetItem* group = n
 std::vector<QTreeWidgetItem*> AddCoins(CoinControlTreeWidget& tree, int count, QTreeWidgetItem* group = nullptr)
 {
     std::vector<QTreeWidgetItem*> coins;
+    coins.reserve(count);
     for (int i = 0; i < count; ++i) {
         coins.push_back(AddCoin(tree, group));
     }
