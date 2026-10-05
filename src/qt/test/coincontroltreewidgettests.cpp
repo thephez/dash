@@ -153,7 +153,7 @@ void CoinControlTreeWidgetTests::disabledCoinsSkipped()
     CoinControlTreeWidget tree;
     const auto coins{AddCoins(tree, 6)};
     // CoinControlDialog disables locked coins
-    coins[2]->setFlags(coins[2]->flags() & ~Qt::ItemIsEnabled);
+    coins[2]->setFlags(coins[2]->flags().setFlag(Qt::ItemIsEnabled, false));
     ShowTree(tree);
 
     ClickCheckbox(tree, coins[0]);
