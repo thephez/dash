@@ -5,8 +5,12 @@ P2P and network changes
   onion-service bind (`127.0.0.1:9996` by default) cannot be set up. Dash Core
   v23 and earlier started as long as at least one bind succeeded.
 
-* The implicit onion-service bind is added whenever no `-bind=...=onion` is
-  given, unless `-bind` is given and `-listenonion=0`. Use
-  `-bind=<addr>:<port>=onion` to move it. To drop it, combine an explicit
-  `-bind=<addr>` with `-listenonion=0`. `-listenonion=0` alone or `-whitebind`
-  alone does not drop it, and `-listen=0` disables all binds.
+* Nodes configured with `-bind` but no specific `-bind=<addr:port>=onion` now
+  refuse to start when `-listenonion` is enabled. This includes nodes without
+  Tor configured, since `-listenonion` is enabled by default when listening.
+  Shared binds cannot distinguish Tor-forwarded connections from direct
+  connections, which can grant Tor peers unintended IP-based whitelist
+  permissions. Nodes without `-bind`, including those using only `-whitebind`,
+  continue to get the default onion target. Users should add a specific
+  `-bind=<addr:port>=onion` to accept incoming Tor connections, or set
+  `-listenonion=0` to disable automatic onion service creation.

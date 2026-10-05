@@ -11,7 +11,6 @@ from test_framework.netutil import (
     addr_to_hex,
     get_bind_addrs,
 )
-from test_framework.p2p import P2PInterface
 from test_framework.test_framework import (
     BitcoinTestFramework,
 )
@@ -28,7 +27,7 @@ class BindExtraTest(BitcoinTestFramework):
         # Avoid any -bind= on the command line. Force the framework to avoid
         # adding -bind=127.0.0.1.
         self.bind_to_localhost_only = False
-        self.num_nodes = 4
+        self.num_nodes = 3
 
     def skip_test_if_missing_module(self):
         # Due to OS-specific network stats queries, we only run on Linux.
@@ -61,26 +60,14 @@ class BindExtraTest(BitcoinTestFramework):
         )
         port += 2
 
-        # Node2, no -bind=...=onion and -listenonion=0, thus no extra port for Tor target.
+        # Node2, no -bind=...=onion, thus no extra port for Tor target.
         self.expected.append(
             [
-                [f"-bind=127.0.0.1:{port}", "-listenonion=0"],
+                [f"-bind=127.0.0.1:{port}"],
                 [(loopback_ipv4, port)]
             ],
         )
         port += 1
-
-        # Node3, no -bind=...=onion but -listenonion=1, thus the default Tor target
-        # 127.0.0.1:19896 (regtest) is bound in addition, so that incoming Tor
-        # connections are not mixed with the ones on -bind=... Point -torcontrol at
-        # an unused port so that no onion service is created via a local Tor.
-        self.expected.append(
-            [
-                [f"-bind=127.0.0.1:{port}", "-listenonion=1", f"-torcontrol=127.0.0.1:{port + 1}"],
-                [(loopback_ipv4, port), (loopback_ipv4, 19896)]
-            ],
-        )
-        port += 2
 
         self.extra_args = list(map(lambda e: e[0], self.expected))
         self.setup_nodes()
@@ -100,9 +87,22 @@ class BindExtraTest(BitcoinTestFramework):
             binds = set(filter(lambda e: e[1] != rpc_port(i), binds))
             assert_equal(binds, set(expected_services))
 
-        self.log.info("Checking that a connection to the default Tor target of node 3 is tagged as onion")
-        self.nodes[3].add_p2p_connection(P2PInterface(), dstport=19896)
-        assert_equal([peer["network"] for peer in self.nodes[3].getpeerinfo()], ["onion"])
+        self.log.info("Test -listenonion with a normal bind and no dedicated onion bind")
+        self.stop_node(2)
+        self.nodes[2].assert_start_raises_init_error(
+            self.extra_args[2] + ["-listenonion=1", "-torcontrol=127.0.0.1:1"],
+            "Error: The automatic Tor onion service requires a dedicated onion bind. Use a specific address such as -bind=127.0.0.1:<port>=onion, or disable the service with -listenonion=0.",
+        )
+
+        self.log.info("Test -bind with dedicated onion bind starts when -listenonion=1")
+        self.restart_node(1, extra_args=self.extra_args[1] + ["-listenonion=1", "-torcontrol=127.0.0.1:1"])
+
+        self.log.info("Test wildcard onion bind with -listenonion=1")
+        self.stop_node(0)
+        self.nodes[0].assert_start_raises_init_error(
+            [f"-bind=0.0.0.0:{p2p_port(0)}=onion", "-listenonion=1", "-torcontrol=127.0.0.1:1"],
+            "Error: The automatic Tor onion service cannot use a wildcard onion bind because the Tor daemon wouldn't be able to forward incoming connections to us. Use a specific address such as -bind=127.0.0.1:<port>=onion, or disable the service with -listenonion=0.",
+        )
 
 if __name__ == '__main__':
     BindExtraTest().main()
