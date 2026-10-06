@@ -1056,9 +1056,11 @@ void CTxMemPool::removeProTxSpentCollateralConflicts(const CTransaction &tx)
     for (const auto& in : tx.vin) {
         auto collateralIt = mapProTxCollaterals.find(in.prevout);
         if (collateralIt != mapProTxCollaterals.end()) {
-            // A not yet mined ProRegTx whose collateral is now spent, and TXs referring to it
+            // A not yet mined ProRegTx whose collateral is now spent, and TXs referring to it.
+            // A collateral that is an output of the ProRegTx itself can only be spent by its own
+            // descendant, which is mined after it and so does not make it unmineable
             const uint256 proRegTxHash{collateralIt->second};
-            if (auto it = mapTx.find(proRegTxHash); it != mapTx.end()) {
+            if (auto it = mapTx.find(proRegTxHash); it != mapTx.end() && in.prevout.hash != proRegTxHash) {
                 removeRecursive(it->GetTx(), MemPoolRemovalReason::CONFLICT);
             }
             removeProTxReferences(proRegTxHash);
