@@ -215,7 +215,7 @@ bool CheckCbTxBestChainlock(const CCbTx& cbTx, const CBlockIndex* pindex, const 
 }
 
 bool CSpecialTxProcessor::CheckSpecialTxInner(const CChain* chain, const CTransaction& tx,
-                                              const CBlockIndex* pindexPrev, bool is_v24_active,
+                                              const CBlockIndex* pindexPrev, SpecialTxRules rules,
                                               const CCoinsViewCache& view, const std::optional<CRangesSet>& indexes,
                                               bool check_sigs, TxValidationState& state)
 {
@@ -231,26 +231,25 @@ bool CSpecialTxProcessor::CheckSpecialTxInner(const CChain* chain, const CTransa
     try {
         switch (tx.nType) {
         case TRANSACTION_PROVIDER_REGISTER:
-            return CheckProRegTx(tx, pindexPrev, m_dmnman, view, m_consensus_params, is_v24_active, state, check_sigs);
+            return CheckProRegTx(tx, pindexPrev, m_dmnman, view, m_consensus_params, rules.v24, state, check_sigs);
         case TRANSACTION_PROVIDER_UPDATE_SERVICE:
-            return CheckProUpServTx(tx, pindexPrev, m_dmnman, m_consensus_params, is_v24_active, state, check_sigs);
+            return CheckProUpServTx(tx, pindexPrev, m_dmnman, m_consensus_params, rules.v24, state, check_sigs);
         case TRANSACTION_PROVIDER_UPDATE_REGISTRAR:
-            return CheckProUpRegTx(tx, pindexPrev, m_dmnman, view, m_consensus_params, is_v24_active, state, check_sigs);
+            return CheckProUpRegTx(tx, pindexPrev, m_dmnman, view, m_consensus_params, rules.v24, state, check_sigs);
         case TRANSACTION_PROVIDER_UPDATE_REVOKE:
-            return CheckProUpRevTx(tx, pindexPrev, m_dmnman, m_consensus_params, is_v24_active, state, check_sigs);
+            return CheckProUpRevTx(tx, pindexPrev, m_dmnman, m_consensus_params, rules.v24, state, check_sigs);
         case TRANSACTION_PROVIDER_DISSOLVE:
-            return CheckProDisTx(tx, pindexPrev, m_dmnman, m_consensus_params, is_v24_active, state, check_sigs);
+            return CheckProDisTx(tx, pindexPrev, m_dmnman, m_consensus_params, rules.v24, state, check_sigs);
         case TRANSACTION_PROVIDER_UPDATE_SHARE:
-            return CheckProUpShareTx(tx, pindexPrev, m_dmnman, m_consensus_params, is_v24_active, state, check_sigs);
+            return CheckProUpShareTx(tx, pindexPrev, m_dmnman, m_consensus_params, rules.v24, state, check_sigs);
         case TRANSACTION_PROVIDER_UPDATE_SHARED_REGISTRAR:
-            return CheckProUpSharedRegTx(tx, pindexPrev, m_dmnman, m_consensus_params, is_v24_active, state,
-                                         check_sigs);
+            return CheckProUpSharedRegTx(tx, pindexPrev, m_dmnman, m_consensus_params, rules.v24, state, check_sigs);
         case TRANSACTION_COINBASE: {
             if (!tx.IsCoinBase()) {
                 return state.Invalid(TxValidationResult::TX_CONSENSUS, "bad-cbtx-invalid");
             }
             if (const auto opt_cbTx = GetTxPayload<CCbTx>(tx)) {
-                return CheckCbTx(*opt_cbTx, pindexPrev, is_v24_active, state);
+                return CheckCbTx(*opt_cbTx, pindexPrev, rules.v24, state);
             } else {
                 return state.Invalid(TxValidationResult::TX_CONSENSUS, "bad-cbtx-payload");
             }
@@ -261,10 +260,10 @@ bool CSpecialTxProcessor::CheckSpecialTxInner(const CChain* chain, const CTransa
             return chain ? CheckMNHFTx(m_blockman, m_qman, *chain, tx, pindexPrev, state) :
                            CheckMNHFTx(m_blockman, m_qman, tx, pindexPrev, state);
         case TRANSACTION_ASSET_LOCK:
-            return CheckAssetLockTx(tx, state, is_v24_active);
+            return CheckAssetLockTx(tx, state, rules.v24);
         case TRANSACTION_ASSET_UNLOCK:
-            return chain ? CheckAssetUnlockTx(m_blockman, m_qman, *chain, tx, pindexPrev, indexes, is_v24_active, state) :
-                           CheckAssetUnlockTx(m_blockman, m_qman, tx, pindexPrev, indexes, is_v24_active, state);
+            return chain ? CheckAssetUnlockTx(m_blockman, m_qman, *chain, tx, pindexPrev, indexes, rules.v24, state)
+                         : CheckAssetUnlockTx(m_blockman, m_qman, tx, pindexPrev, indexes, rules.v24, state);
         }
     } catch (const std::exception& e) {
         LogPrintf("%s -- failed: %s\n", __func__, e.what());
@@ -274,11 +273,11 @@ bool CSpecialTxProcessor::CheckSpecialTxInner(const CChain* chain, const CTransa
     return state.Invalid(TxValidationResult::TX_BAD_SPECIAL, "bad-tx-type-check");
 }
 
-bool CSpecialTxProcessor::CheckSpecialTx(const CTransaction& tx, const CBlockIndex* pindexPrev, bool is_v24_active,
+bool CSpecialTxProcessor::CheckSpecialTx(const CTransaction& tx, const CBlockIndex* pindexPrev, SpecialTxRules rules,
                                          const CCoinsViewCache& view, bool check_sigs, TxValidationState& state)
 {
     AssertLockHeld(::cs_main);
-    return CheckSpecialTxInner(nullptr, tx, pindexPrev, is_v24_active, view, std::nullopt, check_sigs, state);
+    return CheckSpecialTxInner(nullptr, tx, pindexPrev, rules, view, std::nullopt, check_sigs, state);
 }
 
 static void HandleQuorumCommitment(const llmq::CFinalCommitment& qc, const std::vector<CDeterministicMNCPtr>& members,
@@ -796,7 +795,7 @@ bool CSpecialTxProcessor::RebuildListFromBlock(const CBlock& block, gsl::not_nul
 }
 
 bool CSpecialTxProcessor::ProcessSpecialTxsInBlock(Chainstate& chainstate, const CChain& chain, const CBlock& block,
-                                                   const CBlockIndex* pindex, bool is_v24_active,
+                                                   const CBlockIndex* pindex, SpecialTxRules rules,
                                                    const CCoinsViewCache& view, CAmount blockSubsidy, bool fJustCheck,
                                                    bool fCheckCbTxMerkleRoots, BlockValidationState& state,
                                                    MNListUpdates& updatesRet)
@@ -821,7 +820,7 @@ bool CSpecialTxProcessor::ProcessSpecialTxsInBlock(Chainstate& chainstate, const
             }
             if (opt_cbTx = GetTxPayload<CCbTx>(*tx); opt_cbTx) {
                 TxValidationState tx_state;
-                if (!CheckCbTx(*opt_cbTx, pindex->pprev, is_v24_active, tx_state)) {
+                if (!CheckCbTx(*opt_cbTx, pindex->pprev, rules.v24, tx_state)) {
                     assert(tx_state.GetResult() == TxValidationResult::TX_CONSENSUS ||
                            tx_state.GetResult() == TxValidationResult::TX_BAD_SPECIAL);
                     return state.Invalid(BlockValidationResult::BLOCK_CONSENSUS, tx_state.GetRejectReason(),
@@ -854,7 +853,7 @@ bool CSpecialTxProcessor::ProcessSpecialTxsInBlock(Chainstate& chainstate, const
         for (size_t i = 0; i < block.vtx.size(); ++i) {
             // The shared-collateral creation rule applies to every transaction, including the
             // coinbase and non-special transactions, which CheckSpecialTxInner never sees
-            if (is_v24_active) {
+            if (rules.v24) {
                 if (TxValidationState tx_state; !CheckSharedCollateralTemplateOutputs(*block.vtx[i], tx_state)) {
                     return state.Invalid(BlockValidationResult::BLOCK_CONSENSUS, tx_state.GetRejectReason(),
                                          strprintf("Shared collateral check failed (tx hash %s) %s",
@@ -869,8 +868,7 @@ bool CSpecialTxProcessor::ProcessSpecialTxsInBlock(Chainstate& chainstate, const
             TxValidationState tx_state;
             // At this moment CheckSpecialTx() may fail by 2 possible ways:
             // consensus failures and "TX_BAD_SPECIAL"
-            if (!CheckSpecialTxInner(&chain, *ptr_tx, pindex->pprev, is_v24_active, view, indexes, fCheckCbTxMerkleRoots,
-                                     tx_state)) {
+            if (!CheckSpecialTxInner(&chain, *ptr_tx, pindex->pprev, rules, view, indexes, fCheckCbTxMerkleRoots, tx_state)) {
                 assert(tx_state.GetResult() == TxValidationResult::TX_CONSENSUS || tx_state.GetResult() == TxValidationResult::TX_BAD_SPECIAL);
                 return state.Invalid(BlockValidationResult::BLOCK_CONSENSUS, tx_state.GetRejectReason(),
                                  strprintf("Special Transaction check failed (tx hash %s) %s", ptr_tx->GetHash().ToString(), tx_state.GetDebugMessage()));
@@ -906,7 +904,7 @@ bool CSpecialTxProcessor::ProcessSpecialTxsInBlock(Chainstate& chainstate, const
 
         CDeterministicMNList mn_list;
         if (DeploymentActiveAt(*pindex, m_consensus_params, Consensus::DEPLOYMENT_DIP0003)) {
-            if (!BuildNewListFromBlock(block, pindex->pprev, is_v24_active, view, true, state, mn_list)) {
+            if (!BuildNewListFromBlock(block, pindex->pprev, rules.v24, view, true, state, mn_list)) {
                 // pass the state returned by the function above
                 return false;
             }

@@ -360,9 +360,8 @@ std::optional<ProviderTxError> Preflight(node::NodeContext& node, const CTransac
     }
 
     TxValidationState state;
-    const bool is_v24_active{DeploymentActiveAfter(tip, chainman, Consensus::DEPLOYMENT_V24)};
-    if (!chain_helper.special_tx->CheckSpecialTx(tx, tip, is_v24_active, chainman.ActiveChainstate().CoinsTip(), true,
-                                                 state)) {
+    if (!chain_helper.special_tx->CheckSpecialTx(tx, tip, GetSpecialTxRules(tip, chainman),
+                                                 chainman.ActiveChainstate().CoinsTip(), true, state)) {
         return Error(ProviderTxErrorCode::CONSENSUS_REJECTED, state.ToString(), state.GetRejectReason());
     }
     return std::nullopt;

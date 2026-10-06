@@ -44,6 +44,12 @@ namespace node {
 class BlockManager;
 } // namespace node
 
+/** Activation state of the deployments that special transaction validation depends on, evaluated by the
+ *  caller for the block after pindexPrev (see GetSpecialTxRules() in validation.h) */
+struct SpecialTxRules {
+    bool v24{false};
+};
+
 class CSpecialTxProcessor
 {
 private:
@@ -77,13 +83,14 @@ public:
     {
     }
 
-    bool CheckSpecialTx(const CTransaction& tx, const CBlockIndex* pindexPrev, bool is_v24_active,
+    bool CheckSpecialTx(const CTransaction& tx, const CBlockIndex* pindexPrev, SpecialTxRules rules,
                         const CCoinsViewCache& view, bool check_sigs, TxValidationState& state)
         EXCLUSIVE_LOCKS_REQUIRED(::cs_main);
-    bool ProcessSpecialTxsInBlock(Chainstate& chainstate, const CChain& chain, const CBlock& block, const CBlockIndex* pindex,
-                                  bool is_v24_active, const CCoinsViewCache& view, CAmount blockSubsidy, bool fJustCheck,
-                                  bool fCheckCbTxMerkleRoots, BlockValidationState& state,
-                                  MNListUpdates& updatesRet) EXCLUSIVE_LOCKS_REQUIRED(::cs_main);
+    bool ProcessSpecialTxsInBlock(Chainstate& chainstate, const CChain& chain, const CBlock& block,
+                                  const CBlockIndex* pindex, SpecialTxRules rules, const CCoinsViewCache& view,
+                                  CAmount blockSubsidy, bool fJustCheck, bool fCheckCbTxMerkleRoots,
+                                  BlockValidationState& state, MNListUpdates& updatesRet)
+        EXCLUSIVE_LOCKS_REQUIRED(::cs_main);
     bool UndoSpecialTxsInBlock(const Chainstate& chainstate, const CBlock& block, const CBlockIndex* pindex, MNListUpdates& updatesRet)
         EXCLUSIVE_LOCKS_REQUIRED(::cs_main);
 
@@ -101,7 +108,7 @@ public:
 
 private:
     bool CheckSpecialTxInner(const CChain* chain, const CTransaction& tx, const CBlockIndex* pindexPrev,
-                             bool is_v24_active, const CCoinsViewCache& view, const std::optional<CRangesSet>& indexes,
+                             SpecialTxRules rules, const CCoinsViewCache& view, const std::optional<CRangesSet>& indexes,
                              bool check_sigs, TxValidationState& state) EXCLUSIVE_LOCKS_REQUIRED(::cs_main);
     bool CheckCreditPoolDiffForBlock(const CBlock& block, const CBlockIndex* pindex, const CCbTx& cbTx,
                                      CAmount blockSubsidy, BlockValidationState& state) EXCLUSIVE_LOCKS_REQUIRED(::cs_main);
