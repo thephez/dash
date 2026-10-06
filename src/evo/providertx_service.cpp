@@ -533,12 +533,7 @@ RegistrationResult BuildRegistration(node::NodeContext& node, Wallet& wallet,
         return Error(ProviderTxErrorCode::INVALID_PARAMETER, "payouts array requires provider transaction version 3");
     }
 
-    if (request.type == MnType::Evo) {
-        if (!request.platform_node_id) {
-            return Error(ProviderTxErrorCode::INVALID_PARAMETER, "platformNodeID must be specified for an EvoNode");
-        }
-        payload.platformNodeID = *request.platform_node_id;
-    }
+    if (auto error{ApplyPlatformNodeId(payload, request.platform_node_id)}) return *error;
     if (auto error{ValidateNetworkFields(payload, /*allow_empty=*/true,
                                          /*check_platform_node_id=*/true)}) {
         return *error;
@@ -840,12 +835,7 @@ ProviderTxResult<ProviderTxSubmission> UpdateService(node::NodeContext& node, Wa
     if (auto error{ApplyNetInfo(payload, request.net_info, request.type == MnType::Evo, /*optional=*/false)}) {
         return *error;
     }
-    if (request.type == MnType::Evo) {
-        if (!request.platform_node_id) {
-            return Error(ProviderTxErrorCode::INVALID_PARAMETER, "platformNodeID must be specified for an EvoNode");
-        }
-        payload.platformNodeID = *request.platform_node_id;
-    }
+    if (auto error{ApplyPlatformNodeId(payload, request.platform_node_id)}) return *error;
     if (auto error{ValidateNetworkFields(payload, /*allow_empty=*/false,
                                          /*check_platform_node_id=*/true)}) {
         return *error;

@@ -922,12 +922,7 @@ static UniValue protx_register_common_wrapper(const JSONRPCRequest& request,
     typed_request.payouts = ParsePayouts(request.params[paramIdx + 5], "payouts");
 
     if (mnType == MnType::Evo) {
-        if (!IsHex(request.params[paramIdx + 6].get_str())) {
-            throw JSONRPCError(RPC_INVALID_PARAMETER, "platformNodeID must be hexadecimal string");
-        }
-        uint160 platform_node_id;
-        platform_node_id.SetHex(request.params[paramIdx + 6].get_str());
-        typed_request.platform_node_id = platform_node_id;
+        typed_request.platform_node_id = ParsePlatformNodeID(request.params[paramIdx + 6]);
         typed_request.net_info.platform_p2p = ParsePlatformNetInfo(request.params[paramIdx + 7], "platformP2PAddrs",
                                                                    capabilities.extended_addresses);
         typed_request.net_info.platform_https = ParsePlatformNetInfo(request.params[paramIdx + 8], "platformHTTPSAddrs",
@@ -1072,12 +1067,7 @@ static UniValue protx_update_service_common_wrapper(const JSONRPCRequest& reques
     size_t paramIdx{3};
     if (mnType == MnType::Evo) {
         const auto capabilities{evo::provider::GetCapabilities(node)};
-        if (!IsHex(request.params[paramIdx].get_str())) {
-            throw JSONRPCError(RPC_INVALID_PARAMETER, "platformNodeID must be hexadecimal string");
-        }
-        uint160 platform_node_id;
-        platform_node_id.SetHex(request.params[paramIdx].get_str());
-        typed_request.platform_node_id = platform_node_id;
+        typed_request.platform_node_id = ParsePlatformNodeID(request.params[paramIdx]);
         typed_request.net_info.platform_p2p = ParsePlatformNetInfo(request.params[paramIdx + 1], "platformP2PAddrs",
                                                                    capabilities.extended_addresses);
         typed_request.net_info.platform_https = ParsePlatformNetInfo(request.params[paramIdx + 2], "platformHTTPSAddrs",
