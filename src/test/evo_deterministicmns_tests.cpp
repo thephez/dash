@@ -1450,6 +1450,15 @@ void FuncTestMempoolDualProregtx(TestChainSetup& setup)
     testPool.addUnchecked(entry.FromTx(tx_reg1));
     BOOST_CHECK_EQUAL(testPool.size(), 1U);
     BOOST_CHECK(testPool.existsProviderTxConflict(CTransaction(tx_reg2)));
+
+    // A TX spending the collateral tx_reg1 carries itself is its child. When its InstantSend lock
+    // arrives first, mempool acceptance drops ProTx conflicts of the child before looking up its
+    // inputs, and that must not take the parent away
+    CMutableTransaction tx_spend_collateral;
+    tx_spend_collateral.vin.emplace_back(collateralOutpoint);
+    tx_spend_collateral.vout.emplace_back(0, CScript() << OP_RETURN);
+    testPool.removeProTxConflicts(CTransaction(tx_spend_collateral));
+    BOOST_CHECK_EQUAL(testPool.size(), 1U);
 }
 
 // A ProRegTx that reuses a confirmed external collateral replaces the live MN at block
