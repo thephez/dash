@@ -231,11 +231,11 @@ bool CSpecialTxProcessor::CheckSpecialTxInner(const CChain* chain, const CTransa
     try {
         switch (tx.nType) {
         case TRANSACTION_PROVIDER_REGISTER:
-            return CheckProRegTx(tx, pindexPrev, m_dmnman, view, m_consensus_params, rules.v24, state, check_sigs);
+            return CheckProRegTx(tx, pindexPrev, m_dmnman, view, m_consensus_params, rules, state, check_sigs);
         case TRANSACTION_PROVIDER_UPDATE_SERVICE:
             return CheckProUpServTx(tx, pindexPrev, m_dmnman, m_consensus_params, rules.v24, state, check_sigs);
         case TRANSACTION_PROVIDER_UPDATE_REGISTRAR:
-            return CheckProUpRegTx(tx, pindexPrev, m_dmnman, view, m_consensus_params, rules.v24, state, check_sigs);
+            return CheckProUpRegTx(tx, pindexPrev, m_dmnman, view, m_consensus_params, rules, state, check_sigs);
         case TRANSACTION_PROVIDER_UPDATE_REVOKE:
             return CheckProUpRevTx(tx, pindexPrev, m_dmnman, m_consensus_params, rules.v24, state, check_sigs);
         case TRANSACTION_PROVIDER_DISSOLVE:
@@ -1146,18 +1146,27 @@ static bool IsVersionChangeValid(const uint16_t state_version, const uint16_t tx
 }
 
 bool CheckProRegTx(const CTransaction& tx, gsl::not_null<const CBlockIndex*> pindexPrev, CDeterministicMNManager& dmnman,
-                   const CCoinsViewCache& view, const Consensus::Params& consensus_params, bool is_v24_active,
+                   const CCoinsViewCache& view, const Consensus::Params& consensus_params, SpecialTxRules rules,
                    TxValidationState& state, bool check_sigs)
 {
-    const auto opt_ptx = GetValidatedPayload<CProRegTx>(tx, pindexPrev, consensus_params, is_v24_active, state);
+    const auto opt_ptx = GetValidatedPayload<CProRegTx>(tx, pindexPrev, consensus_params, rules.v24, state);
     if (!opt_ptx) {
         // pass the state returned by the function above
         return false;
     }
 
     // No longer allow legacy scheme masternode registration
-    if (is_v24_active && opt_ptx->nVersion < ProTxVersion::BasicBLS) {
+    if (rules.v24 && opt_ptx->nVersion < ProTxVersion::BasicBLS) {
         return state.Invalid(TxValidationResult::TX_CONSENSUS, "bad-protx-version-disallowed");
+    }
+
+    if (opt_ptx->nType == MnType::Evo && !rules.evo_shares) {
+        if (opt_ptx->IsShared()) {
+            return state.Invalid(TxValidationResult::TX_BAD_SPECIAL, "bad-protx-shares-evo");
+        }
+        if (GetOwnerPayouts(*opt_ptx).size() > 1) {
+            return state.Invalid(TxValidationResult::TX_BAD_SPECIAL, "bad-protx-payouts-evo");
+        }
     }
 
     // It's allowed to set addr to 0, which will put the MN into PoSe-banned state and require a ProUpServTx to be
@@ -1260,7 +1269,7 @@ bool CheckProRegTx(const CTransaction& tx, gsl::not_null<const CBlockIndex*> pin
         // proves ownership of the operator key, so that gap lets anyone claim a masternode's key.
         // Nothing is excluded here: a duplicate key is never allowed, even for a ProTx replacing an
         // existing masternode.
-        if (is_v24_active && mnList.HasOperatorKeyUnderAnyScheme(opt_ptx->pubKeyOperator.Get(), /*self=*/uint256())) {
+        if (rules.v24 && mnList.HasOperatorKeyUnderAnyScheme(opt_ptx->pubKeyOperator.Get(), /*self=*/uint256())) {
             return state.Invalid(TxValidationResult::TX_BAD_SPECIAL, "bad-protx-dup-key");
         }
 
@@ -1417,10 +1426,10 @@ bool CheckProUpServTx(const CTransaction& tx, gsl::not_null<const CBlockIndex*> 
 }
 
 bool CheckProUpRegTx(const CTransaction& tx, gsl::not_null<const CBlockIndex*> pindexPrev, CDeterministicMNManager& dmnman,
-                     const CCoinsViewCache& view, const Consensus::Params& consensus_params, bool is_v24_active,
+                     const CCoinsViewCache& view, const Consensus::Params& consensus_params, SpecialTxRules rules,
                      TxValidationState& state, bool check_sigs)
 {
-    const auto opt_ptx = GetValidatedPayload<CProUpRegTx>(tx, pindexPrev, consensus_params, is_v24_active, state);
+    const auto opt_ptx = GetValidatedPayload<CProUpRegTx>(tx, pindexPrev, consensus_params, rules.v24, state);
     if (!opt_ptx) {
         // pass the state returned by the function above
         return false;
@@ -1438,7 +1447,7 @@ bool CheckProUpRegTx(const CTransaction& tx, gsl::not_null<const CBlockIndex*> p
         return state.Invalid(TxValidationResult::TX_BAD_SPECIAL, "bad-protx-shared-mn");
     }
 
-    if (!IsVersionChangeValid(dmn->pdmnState->nVersion, opt_ptx->nVersion, is_v24_active, state)) {
+    if (!IsVersionChangeValid(dmn->pdmnState->nVersion, opt_ptx->nVersion, rules.v24, state)) {
         // pass the state returned by the function above
         return false;
     }
@@ -1448,7 +1457,7 @@ bool CheckProUpRegTx(const CTransaction& tx, gsl::not_null<const CBlockIndex*> p
     // if that target slot is already held by another masternode -- under either encoding -- so the
     // re-key in UpdateMN() cannot collide and throw out of block assembly. Scoped to those two cases
     // so a pre-existing cross-scheme pair's non-migrating routine update is not blocked.
-    if (is_v24_active) {
+    if (rules.v24) {
         const bool key_changed{!(opt_ptx->pubKeyOperator == dmn->pdmnState->pubKeyOperator)};
         const bool migrating{IsSchemeMigration(dmn->pdmnState->nVersion, opt_ptx->nVersion)};
         if ((key_changed || migrating) &&
@@ -1471,6 +1480,9 @@ bool CheckProUpRegTx(const CTransaction& tx, gsl::not_null<const CBlockIndex*> p
 
     const auto owner_payouts = GetOwnerPayouts(*opt_ptx);
     if (!IsPayoutListTriviallyValid(owner_payouts, dmn->pdmnState->keyIDOwner, opt_ptx->keyIDVoting, state)) return false;
+    if (dmn->nType == MnType::Evo && !rules.evo_shares && owner_payouts.size() > 1) {
+        return state.Invalid(TxValidationResult::TX_BAD_SPECIAL, "bad-protx-payouts-evo");
+    }
 
     Coin coin;
     if (!view.GetCoin(dmn->collateralOutpoint, coin) || coin.IsSpent()) {

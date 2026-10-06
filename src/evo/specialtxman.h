@@ -48,6 +48,8 @@ class BlockManager;
  *  caller for the block after pindexPrev (see GetSpecialTxRules() in validation.h) */
 struct SpecialTxRules {
     bool v24{false};
+    //! EvoNodes may register with shared collateral and have multiple owner payouts
+    bool evo_shares{false};
 };
 
 class CSpecialTxProcessor
@@ -130,13 +132,13 @@ bool CheckCbTxBestChainlock(const CCbTx& cbTx, const CBlockIndex* pindex, const 
                             const chainlock::Chainlocks& chainlocks, BlockValidationState& state);
 
 bool CheckProRegTx(const CTransaction& tx, gsl::not_null<const CBlockIndex*> pindexPrev, CDeterministicMNManager& dmnman,
-                   const CCoinsViewCache& view, const Consensus::Params& consensus_params, bool is_v24_active,
+                   const CCoinsViewCache& view, const Consensus::Params& consensus_params, SpecialTxRules rules,
                    TxValidationState& state, bool check_sigs);
 bool CheckProUpServTx(const CTransaction& tx, gsl::not_null<const CBlockIndex*> pindexPrev,
                       CDeterministicMNManager& dmnman, const Consensus::Params& consensus_params, bool is_v24_active,
                       TxValidationState& state, bool check_sigs);
 bool CheckProUpRegTx(const CTransaction& tx, gsl::not_null<const CBlockIndex*> pindexPrev, CDeterministicMNManager& dmnman,
-                     const CCoinsViewCache& view, const Consensus::Params& consensus_params, bool is_v24_active,
+                     const CCoinsViewCache& view, const Consensus::Params& consensus_params, SpecialTxRules rules,
                      TxValidationState& state, bool check_sigs);
 bool CheckProUpRevTx(const CTransaction& tx, gsl::not_null<const CBlockIndex*> pindexPrev,
                      CDeterministicMNManager& dmnman, const Consensus::Params& consensus_params, bool is_v24_active,
