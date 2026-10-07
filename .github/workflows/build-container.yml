@@ -25,8 +25,8 @@ on:
         type: string
     outputs:
       path:
-        description: "Path to built container"
-        value: ghcr.io/${{ jobs.build-amd64.outputs.repo }}/${{ inputs.name }}:${{ jobs.build-amd64.outputs.tag }}
+        description: "Digest reference to the container built by this run"
+        value: ${{ jobs.create-manifest.outputs.path }}
 
 jobs:
   build-amd64:
@@ -70,11 +70,11 @@ jobs:
           file: ${{ inputs.file }}
           push: true
           platforms: linux/amd64
+          # Only trusted events may write tags that other runs read
           tags: |
-            ghcr.io/${{ steps.prepare.outputs.repo }}/${{ inputs.name }}:${{ hashFiles(inputs.file) }}-amd64
+            ghcr.io/${{ steps.prepare.outputs.repo }}/${{ inputs.name }}:${{ github.event_name == 'push' && format('trusted-{0}', hashFiles(inputs.file)) || 'untrusted' }}-amd64
           cache-from: |
-            type=registry,ref=ghcr.io/${{ steps.prepare.outputs.repo }}/${{ inputs.name }}:${{ hashFiles(inputs.file) }}-amd64
-            type=registry,ref=ghcr.io/${{ steps.prepare.outputs.repo }}/${{ inputs.name }}:${{ steps.prepare.outputs.tag }}
+            type=registry,ref=ghcr.io/${{ steps.prepare.outputs.repo }}/${{ inputs.name }}:trusted-${{ hashFiles(inputs.file) }}-amd64
           cache-to: type=inline
 
   build-arm64:
@@ -116,17 +116,19 @@ jobs:
           file: ${{ inputs.file }}
           push: true
           platforms: linux/arm64
+          # Only trusted events may write tags that other runs read
           tags: |
-            ghcr.io/${{ steps.prepare.outputs.repo }}/${{ inputs.name }}:${{ hashFiles(inputs.file) }}-arm64
+            ghcr.io/${{ steps.prepare.outputs.repo }}/${{ inputs.name }}:${{ github.event_name == 'push' && format('trusted-{0}', hashFiles(inputs.file)) || 'untrusted' }}-arm64
           cache-from: |
-            type=registry,ref=ghcr.io/${{ steps.prepare.outputs.repo }}/${{ inputs.name }}:${{ hashFiles(inputs.file) }}-arm64
-            type=registry,ref=ghcr.io/${{ steps.prepare.outputs.repo }}/${{ inputs.name }}:${{ steps.prepare.outputs.tag }}
+            type=registry,ref=ghcr.io/${{ steps.prepare.outputs.repo }}/${{ inputs.name }}:trusted-${{ hashFiles(inputs.file) }}-arm64
           cache-to: type=inline
 
   create-manifest:
     name: Create multi-arch manifest
     runs-on: ${{ inputs.runs-on-arm64 }}
     needs: [build-amd64, build-arm64]
+    outputs:
+      path: ${{ steps.manifest.outputs.path }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -146,20 +148,24 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Create and push multi-arch manifest
+        id: manifest
+        env:
+          TRUSTED: ${{ github.event_name == 'push' }}
         run: |
           REPO="ghcr.io/${{ needs.build-amd64.outputs.repo }}/${{ inputs.name }}"
           TAG="${{ needs.build-amd64.outputs.tag }}"
           HASH_TAG="${{ hashFiles(inputs.file) }}"
 
-          # Create manifest from arch-specific images
-          docker buildx imagetools create -t "${REPO}:${HASH_TAG}" \
-            "${REPO}:${HASH_TAG}-amd64" \
-            "${REPO}:${HASH_TAG}-arm64"
+          if [[ "$TRUSTED" == "true" ]]; then
+            TAGS=(-t "${REPO}:${HASH_TAG}" -t "${REPO}:${TAG}" -t "${REPO}:latest")
+          else
+            TAGS=(-t "${REPO}:untrusted")
+          fi
 
-          docker buildx imagetools create -t "${REPO}:${TAG}" \
-            "${REPO}:${HASH_TAG}-amd64" \
-            "${REPO}:${HASH_TAG}-arm64"
+          # Use this run's digests: tags can be moved by concurrent runs
+          docker buildx imagetools create --metadata-file "${RUNNER_TEMP}/manifest.json" "${TAGS[@]}" \
+            "${REPO}@${{ needs.build-amd64.outputs.digest }}" \
+            "${REPO}@${{ needs.build-arm64.outputs.digest }}"
 
-          docker buildx imagetools create -t "${REPO}:latest" \
-            "${REPO}:${HASH_TAG}-amd64" \
-            "${REPO}:${HASH_TAG}-arm64"
+          DIGEST=$(jq -er '."containerimage.descriptor".digest' "${RUNNER_TEMP}/manifest.json")
+          echo "path=${REPO}@${DIGEST}" >> "$GITHUB_OUTPUT"

@@ -7,7 +7,7 @@ on:
 permissions:
   actions: read
   contents: read
-  packages: write
+  packages: read
 
 concurrency:
   group: |
@@ -97,6 +97,9 @@ jobs:
       runs-on: ${{ needs.check-skip.outputs['runner-arm64'] }}
 
   container:
+    permissions:
+      contents: read
+      packages: write
     name: Build container
     needs: [check-skip]
     if: ${{ needs.check-skip.outputs.skip == 'false' }}
@@ -109,6 +112,9 @@ jobs:
       runs-on-arm64: ${{ needs.check-skip.outputs['runner-arm64'] }}
 
   container-slim:
+    permissions:
+      contents: read
+      packages: write
     name: Build slim container
     needs: [check-skip]
     if: ${{ needs.check-skip.outputs.skip == 'false' }}

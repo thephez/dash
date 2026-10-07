@@ -1,7 +1,7 @@
 name: Guix Build
 
 permissions:
-  packages: write
+  packages: read
   id-token: write
   attestations: write
 
@@ -15,14 +15,15 @@ on:
 
 jobs:
   build-image:
+    permissions:
+      packages: write
     runs-on: ubuntu-24.04-arm
     if: |
       (github.event_name == 'push' && (startsWith(github.ref, 'refs/tags/') || vars.RUN_GUIX_ON_ALL_PUSH == 'true')) ||
       contains(github.event.pull_request.labels.*.name, 'guix-build') ||
       github.event_name == 'schedule'
     outputs:
-      image-tag: ${{ steps.prepare.outputs.image-tag }}
-      repo-name: ${{ steps.prepare.outputs.repo-name }}
+      image: ghcr.io/${{ steps.prepare.outputs.repo-name }}/dashcore-guix-builder@${{ steps.build.outputs.digest }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -38,13 +39,21 @@ jobs:
 
       - name: Commit variables
         id: prepare
+        env:
+          TRUSTED: ${{ github.event_name == 'push' || github.event_name == 'schedule' }}
         run: |
           echo "hash=$(sha256sum ./dash/contrib/containers/guix/Dockerfile | cut -d ' ' -f1)" >> $GITHUB_OUTPUT
           echo "host_user_id=$(id -u)" >> $GITHUB_OUTPUT
           echo "host_group_id=$(id -g)" >> $GITHUB_OUTPUT
           BRANCH_NAME=$(echo "${GITHUB_REF##*/}" | tr '[:upper:]' '[:lower:]')
           REPO_NAME=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
-          echo "image-tag=${BRANCH_NAME}" >> $GITHUB_OUTPUT
+          IMAGE="ghcr.io/${REPO_NAME}/dashcore-guix-builder"
+          # Only trusted events may write tags that other runs read
+          if [[ "$TRUSTED" == "true" ]]; then
+            echo "tags=${IMAGE}:${BRANCH_NAME},${IMAGE}:latest,${IMAGE}:trusted-latest" >> "$GITHUB_OUTPUT"
+          else
+            echo "tags=${IMAGE}:untrusted" >> "$GITHUB_OUTPUT"
+          fi
           echo "repo-name=${REPO_NAME}" >> $GITHUB_OUTPUT
 
       - name: Login to GitHub Container Registry
@@ -55,6 +64,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build Docker image
+        id: build
         uses: docker/build-push-action@v7
         with:
           context: ${{ github.workspace }}/dash
@@ -65,10 +75,8 @@ jobs:
             docker_root=${{ github.workspace }}/dash/contrib/containers/guix
           file: ./dash/contrib/containers/guix/Dockerfile
           push: true
-          tags: |
-            ghcr.io/${{ steps.prepare.outputs.repo-name }}/dashcore-guix-builder:${{ steps.prepare.outputs.image-tag }}
-            ghcr.io/${{ steps.prepare.outputs.repo-name }}/dashcore-guix-builder:latest
-          cache-from: type=registry,ref=ghcr.io/${{ steps.prepare.outputs.repo-name }}/dashcore-guix-builder:latest
+          tags: ${{ steps.prepare.outputs.tags }}
+          cache-from: type=registry,ref=ghcr.io/${{ steps.prepare.outputs.repo-name }}/dashcore-guix-builder:trusted-latest
           cache-to: type=inline,mode=max
 
   build:
@@ -128,7 +136,7 @@ jobs:
             -v ${{ github.workspace }}/dash:/src/dash \
             -v ${{ github.workspace }}/.cache:/home/ubuntu/.cache \
             -w /src/dash \
-            ghcr.io/${{ needs.build-image.outputs.repo-name }}/dashcore-guix-builder:${{ needs.build-image.outputs.image-tag }} && \
+            ${{ needs.build-image.outputs.image }} && \
           docker exec guix-daemon bash -c 'HOSTS=${{ matrix.build_target }} /usr/local/bin/guix-start /src/dash'
 
       - name: Ensure build passes
